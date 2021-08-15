@@ -331,12 +331,17 @@ namespace GrandstreamATAConfigurator
             while (true)
             {
                 Console.WriteLine();
-                var warning = "We will now reset the ATA. Do NOT touch anything during this process.";
-                var commands = new[] {"reset 0", "y"};
                 using var client = new SshClient(_ip, Username, _password);
+                string warning;
+                string[] commands;
 
 
-                if (!reset)
+                if (reset)
+                {
+                    warning = "We will now reset the ATA. Do NOT touch anything during this process.";
+                    commands = new[] {"reset 0", "y"};
+                }
+                else
                 {
                     warning = "We will now configure the ATA. Do NOT touch anything during this process.";
 
