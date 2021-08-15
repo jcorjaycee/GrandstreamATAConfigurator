@@ -30,7 +30,7 @@ namespace GrandstreamATAConfigurator
 
         private static void Main()
         {
-            string title = "SLE's Grandstream FTP Setup";
+            string title = "SLE's Grandstream SSH Setup";
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine(title);
             Console.WriteLine(new string('=', title.Length));
