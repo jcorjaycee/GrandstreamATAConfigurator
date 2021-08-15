@@ -82,6 +82,9 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("Using a pin, paperclip, etc. press and hold the reset button on your ATA");
                 Console.WriteLine("until the lights turn off. Once the globe light turns on, try again.");
                 Console.WriteLine("======================================================");
+                Console.WriteLine();
+                Console.WriteLine("Press any key to close.");
+                Console.ReadKey();
                 return;
             }
 
