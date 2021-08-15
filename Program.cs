@@ -52,6 +52,7 @@ namespace GrandstreamATAConfigurator
             Console.WriteLine("Attempting connection...");
             try
             {
+                // just try connecting using default credentials, if they work awesome, if not prompt
                 client.Connect();
                 client.Disconnect();
             }
@@ -191,6 +192,8 @@ namespace GrandstreamATAConfigurator
 
         private static bool IsGrandstream(string mac)
         {
+            // should you wish to add more ATAs, add their MAC regex here and change the return type to int
+            // then create a switch statement to act accordingly
             const string pattern = "^([Cc][0][-:][7][4][-:][Aa][Dd][:-])([0-9A-Fa-f]{2}[:-]){2}([0-9A-Fa-f]{2})$";
             return Regex.IsMatch(mac, pattern);
         }
@@ -339,12 +342,46 @@ namespace GrandstreamATAConfigurator
 
                     commands = new[]
                     {
-                        "config", "set 196 " + _ataPassword, "set 276 0", "set 64 " + TimeZone, "set 2 " + _ataPassword,
-                        "set 88 0", "set 277 1", "set 47 " + _primaryServer, "set 967 " + _failoverServer, "set 52 2",
-                        "set 35 " + _phoneNumber, "set 36 " + _phoneNumber, "set 34 " + _sipPassword, "set 109 0",
-                        "set 20501 1", "set 20505 5", "set 288 1", "set 243 1", "set 2339 0", "set 850 101",
-                        "set 851 100", "set 852 102", "set 191 0", "set 85 " + Timeout, "set 29 0", "set 57 0",
-                        "set 58 18", "set 59 0", "set 60 0", "set 61 0", "set 62 0", "set 63 0", "commit", "exit",
+                        "config", 
+                        "set 196 " + _ataPassword, // end user password
+                        "set 276 0", // telnet
+                        "set 64 " + TimeZone, // time zone
+                        "set 2 " + _ataPassword, // admin password
+                        "set 88 0", // lock keypad update
+                        "set 277 1", // disable direct IP call
+                        "set 47 " + _primaryServer, // primary server
+                        "set 967 " + _failoverServer, // failover server
+                        "set 52 2", // NAT Traversal
+                        "set 35 " + _phoneNumber, // user ID
+                        "set 36 " + _phoneNumber, // authenticate ID
+                        "set 34 " + _sipPassword, // SIP password
+                        "set 109 0", // outgoing call without registration
+                        "set 20501 1", // random SIP port
+                        "set 20505 5", // random RTP port
+                        "set 288 1", // support SIP instance ID
+                        "set 243 1", // SIP proxy only
+                        "set 2339 0", // Use P-Preferred-Identity-Header
+                        // DTMF
+                        "set 850 101", 
+                        "set 851 100", 
+                        "set 852 102", 
+                        // end DTMF
+                        "set 191 0", // call features
+                        "set 85 " + Timeout, // no key timeout
+                        "set 29 0", // early dial
+                        // vocoder 1-7
+                        "set 57 0", 
+                        "set 58 18", 
+                        "set 59 0", 
+                        "set 60 0", 
+                        "set 61 0", 
+                        "set 62 0", 
+                        "set 63 0", 
+                        // save changes
+                        "commit", 
+                        // navigate back to main menu
+                        "exit",
+                        // reboot
                         "reboot"
                     };
                 }
@@ -359,6 +396,17 @@ namespace GrandstreamATAConfigurator
 
                 foreach (var command in commands)
                 {
+                    if (!reset)
+                    {
+                        if (commands[1] == command)
+                            Console.WriteLine("Setting login credentials, time zone...");
+                        else if (commands[14] == command)
+                            Console.WriteLine("Setting SIP server settings...");
+                        else if (commands[19] == command)
+                            Console.WriteLine("Setting local dialer settings...");
+                        else if (commands[32] == command)
+                            Console.WriteLine("Saving changes and rebooting...");
+                    }
                     sshStream.WriteLine(command);
                     // uncomment this to see what's being sent/received
                     // string line;
@@ -384,7 +432,6 @@ namespace GrandstreamATAConfigurator
                     }
                 }
 
-                Console.Clear();
                 Console.Write(reset
                     ? "ATA successfully reset, press any key to continue..."
                     : "ATA successfully configured, press any key to exit...");
@@ -395,7 +442,13 @@ namespace GrandstreamATAConfigurator
                     continue;
                 }
 
-                Console.WriteLine("Have a nice day (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧");
+                Console.WriteLine("Have a nice day ＜（＾－＾）＞");
+                Console.WriteLine();
+                for (var i = 0; i < 3; i++)
+                {
+                    Console.Write(".");
+                    Thread.Sleep(1000);
+                }
                 break;
             }
         }
