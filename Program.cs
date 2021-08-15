@@ -94,8 +94,7 @@ namespace GrandstreamATAConfigurator
 
             GetParams();
 
-            if (_reset)
-                ResetOrConfigureAta(true);
+            ResetOrConfigureAta(_reset);
         }
 
         private static bool PortScan()
