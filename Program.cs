@@ -342,7 +342,7 @@ namespace GrandstreamATAConfigurator
 
                     commands = new[]
                     {
-                        "config", 
+                        "config",
                         "set 196 " + _ataPassword, // end user password
                         "set 276 0", // telnet
                         "set 64 " + TimeZone, // time zone
@@ -362,23 +362,23 @@ namespace GrandstreamATAConfigurator
                         "set 243 1", // SIP proxy only
                         "set 2339 0", // Use P-Preferred-Identity-Header
                         // DTMF
-                        "set 850 101", 
-                        "set 851 100", 
-                        "set 852 102", 
+                        "set 850 101",
+                        "set 851 100",
+                        "set 852 102",
                         // end DTMF
                         "set 191 0", // call features
                         "set 85 " + Timeout, // no key timeout
                         "set 29 0", // early dial
                         // vocoder 1-7
-                        "set 57 0", 
-                        "set 58 18", 
-                        "set 59 0", 
-                        "set 60 0", 
-                        "set 61 0", 
-                        "set 62 0", 
-                        "set 63 0", 
+                        "set 57 0",
+                        "set 58 18",
+                        "set 59 0",
+                        "set 60 0",
+                        "set 61 0",
+                        "set 62 0",
+                        "set 63 0",
                         // save changes
-                        "commit", 
+                        "commit",
                         // navigate back to main menu
                         "exit",
                         // reboot
@@ -394,25 +394,35 @@ namespace GrandstreamATAConfigurator
                 client.Connect();
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
+                var index = 0;
                 foreach (var command in commands)
                 {
                     if (!reset)
                     {
-                        if (commands[1] == command)
-                            Console.WriteLine("Setting login credentials, time zone...");
-                        else if (commands[14] == command)
-                            Console.WriteLine("Setting SIP server settings...");
-                        else if (commands[19] == command)
-                            Console.WriteLine("Setting local dialer settings...");
-                        else if (commands[32] == command)
-                            Console.WriteLine("Saving changes and rebooting...");
+                        switch (index)
+                        {
+                            case 1:
+                                Console.WriteLine("Setting login credentials, time zone...");
+                                break;
+                            case 14:
+                                Console.WriteLine("Setting SIP server settings...");
+                                break;
+                            case 19:
+                                Console.WriteLine("Setting local dialer settings...");
+                                break;
+                            case 32:
+                                Console.WriteLine("Saving changes and rebooting...");
+                                break;
+                        }
                     }
+
                     sshStream.WriteLine(command);
                     // uncomment this to see what's being sent/received
                     // string line;
                     // while((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
                     //     Console.WriteLine(line);
                     Thread.Sleep(100);
+                    index++;
                 }
 
                 sshStream.Close();
@@ -449,6 +459,7 @@ namespace GrandstreamATAConfigurator
                     Console.Write(".");
                     Thread.Sleep(1000);
                 }
+
                 break;
             }
         }
