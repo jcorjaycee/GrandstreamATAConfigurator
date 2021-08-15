@@ -74,6 +74,7 @@ namespace GrandstreamATAConfigurator
                         // ignored
                     }
                 }
+
                 Console.WriteLine();
                 Console.WriteLine("======================================================");
                 Console.WriteLine("Looks like the password check failed three times.");
@@ -83,18 +84,18 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("======================================================");
                 return;
             }
+
             Console.WriteLine("OK!");
             for (var i = 0; i < 3; i++)
             {
                 Console.Write(".");
                 Thread.Sleep(1000);
             }
-            
+
             GetParams();
 
-            if(_reset)
+            if (_reset)
                 ResetOrConfigureAta(true);
-            
         }
 
         private static bool PortScan()
@@ -216,90 +217,94 @@ namespace GrandstreamATAConfigurator
             while (!done)
             {
                 Console.Clear();
-            Console.WriteLine("We're now going to get some info from you.");
-            Console.WriteLine();
-            VerifyPhone();
-            Console.WriteLine();
-            Console.Write("And what's your SIP password? If you don't know this, contact your provider: ");
-            _sipPassword = Console.ReadLine();
-            while (true)
-            {
+                Console.WriteLine("We're now going to get some info from you.");
                 Console.WriteLine();
-                Console.Write("Your primary server? ");
-                _primaryServer = Console.ReadLine();
-                if (_primaryServer == String.Empty)
-                    Console.WriteLine("Primary server cannot be empty...");
-                else
-                    break;
-            }
-            Console.WriteLine();
-            Console.Write("Your failover server? (Optional): ");
-            _failoverServer = Console.ReadLine();
-            while (true)
-            {
+                VerifyPhone();
                 Console.WriteLine();
-                Console.Write("What should the new ATA password be? ");
-                _ataPassword = Console.ReadLine();
-                if (_ataPassword == String.Empty)
-                    Console.WriteLine("ATA password cannot be empty...");
-                else
-                    break;
-            }
-            Console.Clear();
-            
-            new Action(() =>
-            {
+                Console.Write("And what's your SIP password? If you don't know this, contact your provider: ");
+                _sipPassword = Console.ReadLine();
                 while (true)
                 {
-                    Console.Write("Are we resetting the ATA first? [Y/n]");
-                    var reset = Console.ReadKey().Key;
-                    // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                    switch (reset)
-                    {
-                        case ConsoleKey.Enter:
-                        case ConsoleKey.Y:
-                            _reset = true;
-                            return;
-                        case ConsoleKey.N:
-                            _reset = false;
-                            return;
-                    }
-                    Console.WriteLine("Sorry, that wasn't a valid input.");
-                }
-            })();
-
-            new Action(() =>
-            {
-                while (true)
-                {
-                    Console.Clear();
-                    Console.WriteLine("Current password: " + _password);
-                    Console.WriteLine("New password: " + _ataPassword);
-                    Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
-                    Console.WriteLine("SIP password: " + _sipPassword);
-                    Console.WriteLine("Primary server: " + _primaryServer);
-                    Console.WriteLine("Failover server: " + _failoverServer);
-                    Console.WriteLine("Resetting the ATA first: " + _reset);
                     Console.WriteLine();
-                    Console.Write("Is all of the above correct? ");
-                    var good = Console.ReadKey().Key;
-                    // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                    switch (good)
-                    {
-                        case ConsoleKey.Enter:
-                        case ConsoleKey.Y:
-                            done = true;
-                            return;
-                        case ConsoleKey.N:
-                            return;
-                    }
-                    Console.WriteLine("Sorry, that wasn't a valid input.");
-                    Thread.Sleep(3000);
+                    Console.Write("Your primary server? ");
+                    _primaryServer = Console.ReadLine();
+                    if (_primaryServer == String.Empty)
+                        Console.WriteLine("Primary server cannot be empty...");
+                    else
+                        break;
                 }
-            })();
+
+                Console.WriteLine();
+                Console.Write("Your failover server? (Optional): ");
+                _failoverServer = Console.ReadLine();
+                while (true)
+                {
+                    Console.WriteLine();
+                    Console.Write("What should the new ATA password be? ");
+                    _ataPassword = Console.ReadLine();
+                    if (_ataPassword == String.Empty)
+                        Console.WriteLine("ATA password cannot be empty...");
+                    else
+                        break;
+                }
+
+                Console.Clear();
+
+                new Action(() =>
+                {
+                    while (true)
+                    {
+                        Console.Write("Are we resetting the ATA first? [Y/n]");
+                        var reset = Console.ReadKey().Key;
+                        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+                        switch (reset)
+                        {
+                            case ConsoleKey.Enter:
+                            case ConsoleKey.Y:
+                                _reset = true;
+                                return;
+                            case ConsoleKey.N:
+                                _reset = false;
+                                return;
+                        }
+
+                        Console.WriteLine("Sorry, that wasn't a valid input.");
+                    }
+                })();
+
+                new Action(() =>
+                {
+                    while (true)
+                    {
+                        Console.Clear();
+                        Console.WriteLine("Current password: " + _password);
+                        Console.WriteLine("New password: " + _ataPassword);
+                        Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
+                        Console.WriteLine("SIP password: " + _sipPassword);
+                        Console.WriteLine("Primary server: " + _primaryServer);
+                        Console.WriteLine("Failover server: " + _failoverServer);
+                        Console.WriteLine("Resetting the ATA first: " + _reset);
+                        Console.WriteLine();
+                        Console.Write("Is all of the above correct? ");
+                        var good = Console.ReadKey().Key;
+                        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+                        switch (good)
+                        {
+                            case ConsoleKey.Enter:
+                            case ConsoleKey.Y:
+                                done = true;
+                                return;
+                            case ConsoleKey.N:
+                                return;
+                        }
+
+                        Console.WriteLine("Sorry, that wasn't a valid input.");
+                        Thread.Sleep(3000);
+                    }
+                })();
             }
         }
-        
+
         private static void VerifyPhone()
         {
             while (true)
@@ -330,7 +335,16 @@ namespace GrandstreamATAConfigurator
                 {
                     warning = "We will now configure the ATA. Do NOT touch anything during this process.";
 
-                    commands = new[] {"config", "set 196 " + _ataPassword, "set 276 0", "set 64 " + TimeZone, "set 2 " + _ataPassword, "set 88 0", "set 277 1", "set 47 " + _primaryServer, "set 967 " + _failoverServer, "set 52 2", "set 35 " + _phoneNumber, "set 36 " + _phoneNumber, "set 34 " + _sipPassword, "set 109 0", "set 20501 1", "set 20505 5", "set 288 1", "set 243 1", "set 2339 0", "set 850 101", "set 851 100", "set 852 102", "set 191 0", "set 85 " + Timeout, "set 29 0", "set 57 0", "set 58 18", "set 59 0", "set 60 0", "set 61 0", "set 62 0", "set 63 0", "commit", "exit", "reboot"};
+                    commands = new[]
+                    {
+                        "config", "set 196 " + _ataPassword, "set 276 0", "set 64 " + TimeZone, "set 2 " + _ataPassword,
+                        "set 88 0", "set 277 1", "set 47 " + _primaryServer, "set 967 " + _failoverServer, "set 52 2",
+                        "set 35 " + _phoneNumber, "set 36 " + _phoneNumber, "set 34 " + _sipPassword, "set 109 0",
+                        "set 20501 1", "set 20505 5", "set 288 1", "set 243 1", "set 2339 0", "set 850 101",
+                        "set 851 100", "set 852 102", "set 191 0", "set 85 " + Timeout, "set 29 0", "set 57 0",
+                        "set 58 18", "set 59 0", "set 60 0", "set 61 0", "set 62 0", "set 63 0", "commit", "exit",
+                        "reboot"
+                    };
                 }
 
                 Console.WriteLine(new string('=', warning.Length));
@@ -355,7 +369,7 @@ namespace GrandstreamATAConfigurator
                 client.Disconnect();
 
                 Thread.Sleep(30000);
-                for (int i = 0; i < 60; i++)
+                for (var i = 0; i < 60; i++)
                 {
                     try
                     {
