@@ -14,19 +14,22 @@ namespace GrandstreamATAConfigurator
 {
     internal static class Program
     {
+        // for locating, connecting to ATA
         private static string _ip = "";
-
-        private const string Username = "admin";
-        private static string _password = "admin";
-        private static string _ataPassword = "admin";
-        private static string _sipPassword = "";
-        private const string TimeZone = "EST5EDT";
-        private static string _primaryServer = "";
-        private static string _failoverServer = "";
-        private const int Timeout = 4;
+        
+        // global flag for factory resetting ATA
         private static bool _reset;
-
+        
+        // Grandstream config variables
+        private static string _adminPassword = "admin";
+        private static string _authenticatePassword = "";
+        private static string _failoverServer = "";
+        private const int NoKeyTimeout = 4;
+        private static string _password = "admin";
         private static string _phoneNumber;
+        private static string _primaryServer = "";
+        private const string TimeZone = "EST5EDT";
+        private const string Username = "admin";
 
         private static void Main()
         {
@@ -227,7 +230,7 @@ namespace GrandstreamATAConfigurator
                 VerifyPhone();
                 Console.WriteLine();
                 Console.Write("And what's your SIP password? If you don't know this, contact your provider: ");
-                _sipPassword = Console.ReadLine();
+                _authenticatePassword = Console.ReadLine();
                 while (true)
                 {
                     Console.WriteLine();
@@ -246,8 +249,8 @@ namespace GrandstreamATAConfigurator
                 {
                     Console.WriteLine();
                     Console.Write("What should the new ATA password be? ");
-                    _ataPassword = Console.ReadLine();
-                    if (_ataPassword == String.Empty)
+                    _adminPassword = Console.ReadLine();
+                    if (_adminPassword == String.Empty)
                         Console.WriteLine("ATA password cannot be empty...");
                     else
                         break;
@@ -283,9 +286,9 @@ namespace GrandstreamATAConfigurator
                     {
                         Console.Clear();
                         Console.WriteLine("Current password: " + _password);
-                        Console.WriteLine("New password: " + _ataPassword);
+                        Console.WriteLine("New password: " + _adminPassword);
                         Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
-                        Console.WriteLine("SIP password: " + _sipPassword);
+                        Console.WriteLine("SIP password: " + _authenticatePassword);
                         Console.WriteLine("Primary server: " + _primaryServer);
                         Console.WriteLine("Failover server: " + _failoverServer);
                         Console.WriteLine("Resetting the ATA first: " + _reset);
@@ -348,10 +351,10 @@ namespace GrandstreamATAConfigurator
                     commands = new[]
                     {
                         "config",
-                        "set 196 " + _ataPassword, // end user password
+                        "set 196 " + _adminPassword, // end user password
                         "set 276 0", // telnet
                         "set 64 " + TimeZone, // time zone
-                        "set 2 " + _ataPassword, // admin password
+                        "set 2 " + _adminPassword, // admin password
                         "set 88 0", // lock keypad update
                         "set 277 1", // disable direct IP call
                         "set 47 " + _primaryServer, // primary server
@@ -359,7 +362,7 @@ namespace GrandstreamATAConfigurator
                         "set 52 2", // NAT Traversal
                         "set 35 " + _phoneNumber, // user ID
                         "set 36 " + _phoneNumber, // authenticate ID
-                        "set 34 " + _sipPassword, // SIP password
+                        "set 34 " + _authenticatePassword, // authenticate password
                         "set 109 0", // outgoing call without registration
                         "set 20501 1", // random SIP port
                         "set 20505 5", // random RTP port
@@ -372,7 +375,7 @@ namespace GrandstreamATAConfigurator
                         "set 852 102",
                         // end DTMF
                         "set 191 0", // call features
-                        "set 85 " + Timeout, // no key timeout
+                        "set 85 " + NoKeyTimeout, // no key timeout
                         "set 29 0", // early dial
                         // vocoder 1-7
                         "set 57 0",
