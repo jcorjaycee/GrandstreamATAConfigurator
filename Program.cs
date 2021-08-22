@@ -321,9 +321,7 @@ namespace GrandstreamATAConfigurator
                 _phoneNumber = Console.ReadLine();
                 _phoneNumber = new string(
                     (_phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray());
-                if (_phoneNumber[0] == '1')
-                    _phoneNumber = _phoneNumber.Remove(0, 1);
-                if (_phoneNumber.Length == 10)
+                if (_phoneNumber.Length == 11)
                     return;
                 Console.WriteLine("Sorry, that's not a valid phone number. Please try again.");
             }
