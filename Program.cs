@@ -38,7 +38,7 @@ namespace GrandstreamATAConfigurator
             443
         };
 
-        // used to validate if we're using the right interfacec
+        // used to validate if we're using the right interface
         private static readonly int[] Gateways = new[]
         {
             0,
