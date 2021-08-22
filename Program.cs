@@ -60,6 +60,7 @@ namespace GrandstreamATAConfigurator
             
             _ip = GetLocalIPv4(GetInterface().NetworkInterfaceType);
 
+            Console.WriteLine();
             Console.WriteLine("Now scanning your network for a Grandstream device...");
             if (PortScan())
                 Console.WriteLine("Grandstream device found! Using IP: " + _ip);
@@ -164,58 +165,19 @@ namespace GrandstreamATAConfigurator
 
                 Console.Clear();
 
-                new Action(() =>
-                {
-                    while (true)
-                    {
-                        Console.Write("Are we resetting the ATA first? [Y/n]");
-                        var reset = Console.ReadKey().Key;
-                        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                        switch (reset)
-                        {
-                            case ConsoleKey.Enter:
-                            case ConsoleKey.Y:
-                                _reset = true;
-                                return;
-                            case ConsoleKey.N:
-                                _reset = false;
-                                return;
-                        }
+                _reset = GetUserBool("Are we resetting the ATA first?");
+                
+                Console.Clear();
+                Console.WriteLine("Current password: " + _password);
+                Console.WriteLine("New password: " + _adminPassword);
+                Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
+                Console.WriteLine("SIP password: " + _authenticatePassword);
+                Console.WriteLine("Primary server: " + _primaryServer);
+                Console.WriteLine("Failover server: " + _failoverServer);
+                Console.WriteLine("Resetting the ATA first: " + _reset);
+                Console.WriteLine();
 
-                        Console.WriteLine("Sorry, that wasn't a valid input.");
-                    }
-                })();
-
-                new Action(() =>
-                {
-                    while (true)
-                    {
-                        Console.Clear();
-                        Console.WriteLine("Current password: " + _password);
-                        Console.WriteLine("New password: " + _adminPassword);
-                        Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
-                        Console.WriteLine("SIP password: " + _authenticatePassword);
-                        Console.WriteLine("Primary server: " + _primaryServer);
-                        Console.WriteLine("Failover server: " + _failoverServer);
-                        Console.WriteLine("Resetting the ATA first: " + _reset);
-                        Console.WriteLine();
-                        Console.Write("Is all of the above correct? ");
-                        var good = Console.ReadKey().Key;
-                        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                        switch (good)
-                        {
-                            case ConsoleKey.Enter:
-                            case ConsoleKey.Y:
-                                done = true;
-                                return;
-                            case ConsoleKey.N:
-                                return;
-                        }
-
-                        Console.WriteLine("Sorry, that wasn't a valid input.");
-                        Thread.Sleep(3000);
-                    }
-                })();
+                done = GetUserBool("Is all of the above correct?");
             }
         }
 
@@ -380,6 +342,26 @@ namespace GrandstreamATAConfigurator
                 break;
             }
         }
+
+        private static bool GetUserBool(string prompt)
+        {
+            while (true)
+            {
+                Console.Write(prompt + " (Y/n)");
+                var reset = Console.ReadKey().Key;
+                // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+                switch (reset)
+                {
+                    case ConsoleKey.Enter:
+                    case ConsoleKey.Y:
+                        return true;
+                    case ConsoleKey.N:
+                        return false;
+                }
+
+                Console.WriteLine("Sorry, that wasn't a valid input.");
+            }
+        }
         
         
         // interface scanning
@@ -437,10 +419,13 @@ namespace GrandstreamATAConfigurator
                     }
 
                     // if we got here, we found it!
+                    Console.WriteLine();
                     Console.WriteLine("Found interface: " + iInterface.Name);
+                    if (!GetUserBool("Is this the correct interface?")) break;
                     return iInterface;
                 }
             }
+            Console.WriteLine();
             Console.Write("Hmm... looks like we can't find a proper gateway on this network...");
             Environment.Exit(-1);
             throw new InvalidOperationException();
