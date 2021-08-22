@@ -31,12 +31,14 @@ namespace GrandstreamATAConfigurator
         private const string TimeZone = "EST5EDT";
         private const string Username = "admin";
         
+        // used to port scan for ATA
         private static readonly int[] Ports = new[]
         {
             80,
             443
         };
 
+        // used to validate if we're using the right interfacec
         private static readonly int[] Gateways = new[]
         {
             0,
@@ -45,6 +47,7 @@ namespace GrandstreamATAConfigurator
             254
         };
 
+        
         // MAIN
         private static void Main()
         {
@@ -442,6 +445,7 @@ namespace GrandstreamATAConfigurator
         
         private static bool PortScan()
         {
+            // for each possible IPv4
             for (var i = 1; i < 255; i++)
             {
                 var bytes = IPAddress.Parse(_ip).GetAddressBytes();
@@ -453,14 +457,17 @@ namespace GrandstreamATAConfigurator
                     using var scan = new TcpClient();
                     try
                     {
+                        // if we can't connect to the IP in question, move on
                         if (!scan.ConnectAsync(newIp, s).Wait(20)) continue;
+                        // found a device that responds to one of the ports!
                         var macAddress = GetMacByIp(newIp.ToString());
                         Console.WriteLine($"{newIp}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
+                        // if it's not a Grandstream device we're not going any further
                         if (!IsGrandstream(macAddress)) continue;
                         _ip = newIp.ToString();
                         return true;
                     }
-                    catch (Exception e)
+                    catch (Exception e) // probably a network error
                     {
                         Console.WriteLine("Whoops, couldn't get that... " + newIp);
                         Console.WriteLine(e);
