@@ -33,13 +33,14 @@ namespace GrandstreamATAConfigurator
 
         private static void Main()
         {
-            string title = "SLE's Grandstream SSH Setup";
+            // print title card
+            const string title = "SLE's Grandstream SSH Setup";
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine(title);
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine();
-
-            _ip = GetLocalIPv4(NetworkInterfaceType.Wireless80211);
+            
+            _ip = GetLocalIPv4(GetInterface().NetworkInterfaceType);
 
             Console.WriteLine("Now scanning your network for a Grandstream device...");
             if (PortScan())
@@ -104,6 +105,67 @@ namespace GrandstreamATAConfigurator
             ResetOrConfigureAta(_reset);
         }
 
+        /* UP FRONT - I'd like to disclaim that this is probably not the best way to do this!
+         * This essentially just skips through all interfaces with the ASSUMPTION that only one will meet all requirements
+         * of being Ethernet or 802.11, being in UP status, and not being described as virtual
+         * I am completely open to better ways to do this
+         */
+        private static NetworkInterface GetInterface()
+        {
+            var client = new TcpClient();
+
+            var bytes = Array.Empty<byte>();
+            
+            // for every interface on the computer
+            foreach (var iInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                // if it's not ethernet or wireless, we're not interested
+                if (iInterface.NetworkInterfaceType != NetworkInterfaceType.Ethernet &&
+                    iInterface.NetworkInterfaceType != NetworkInterfaceType.Wireless80211) continue;
+                // if it's not UP, we're not interested
+                if (iInterface.OperationalStatus != OperationalStatus.Up) continue;
+                // if it's described as a virtual adapter, we're not interested
+                if (iInterface.Description.ToLower().Contains("virtual")) continue;
+                
+                // get the list of Unicast Addresses
+                foreach (var ip in iInterface.GetIPProperties().UnicastAddresses)
+                {
+                    // if it isn't a private IP, we're not interested
+                    if (ip.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                    // otherwise, save the IP
+                    bytes = IPAddress.Parse(ip.Address.ToString()).GetAddressBytes();
+                    break;
+                }
+
+                // did we get an IP?
+                if (bytes == Array.Empty<byte>())
+                    continue;
+
+                // for each gateway IP we've defined
+                foreach (var gateway in Gateways)
+                {
+                    bytes[3] = (byte) gateway;
+                    IPAddress newIp = new(bytes);
+                    try
+                    {
+                        // if we can't connect, move onto the next gateway
+                        if (!client.ConnectAsync(newIp, 80).Wait(20)) continue;
+                    }
+                    catch (Exception)
+                    {
+                        // ignored
+                    }
+
+                    // if we got here, we found it!
+                    Console.WriteLine("Found interface: " + iInterface.Name);
+                    return iInterface;
+                }
+            }
+            Console.Write("Hmm... looks like we can't find a proper gateway on this network...");
+            Environment.Exit(-1);
+            throw new InvalidOperationException();
+        }
+
         private static bool PortScan()
         {
             for (var i = 1; i < 255; i++)
@@ -117,16 +179,12 @@ namespace GrandstreamATAConfigurator
                     using var scan = new TcpClient();
                     try
                     {
-                        if (scan.ConnectAsync(newIp, s).Wait(20))
-                        {
-                            var macAddress = GetMacByIp(newIp.ToString());
-                            Console.WriteLine($"{newIp}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
-                            if (IsGrandstream(macAddress))
-                            {
-                                _ip = newIp.ToString();
-                                return true;
-                            }
-                        }
+                        if (!scan.ConnectAsync(newIp, s).Wait(20)) continue;
+                        var macAddress = GetMacByIp(newIp.ToString());
+                        Console.WriteLine($"{newIp}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
+                        if (!IsGrandstream(macAddress)) continue;
+                        _ip = newIp.ToString();
+                        return true;
                     }
                     catch (Exception e)
                     {
@@ -140,10 +198,18 @@ namespace GrandstreamATAConfigurator
             return false;
         }
 
-        private static readonly int[] Ports = new int[]
+        private static readonly int[] Ports = new[]
         {
             80,
             443
+        };
+
+        private static readonly int[] Gateways = new[]
+        {
+            0,
+            1,
+            50,
+            254
         };
 
         private static string GetMacByIp(string ip)
@@ -320,7 +386,7 @@ namespace GrandstreamATAConfigurator
                 Console.Write("What's the phone number you wish to assign to this adapter? ");
                 _phoneNumber = Console.ReadLine();
                 _phoneNumber = new string(
-                    (_phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+                    (_phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray()); // strips any non-numeric characters
                 if (_phoneNumber.Length == 11)
                     return;
                 Console.WriteLine("Sorry, that's not a valid phone number. Please try again.");
