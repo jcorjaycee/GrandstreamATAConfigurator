@@ -241,6 +241,8 @@ namespace GrandstreamATAConfigurator
                 using var client = new SshClient(_ip, Username, _password);
                 string warning;
                 string[] commands;
+                
+                Console.Clear();
 
 
                 if (reset)
@@ -289,6 +291,9 @@ namespace GrandstreamATAConfigurator
                         "set 61 0",
                         "set 62 0",
                         "set 63 0",
+                        // vocoder 8 and 9
+                        "set 98 0",
+                        "set 46 0",
                         // save changes
                         "commit",
                         // navigate back to main menu
@@ -400,6 +405,7 @@ namespace GrandstreamATAConfigurator
                 if (iInterface.OperationalStatus != OperationalStatus.Up) continue;
                 // if it's described as a virtual adapter, we're not interested
                 if (iInterface.Description.ToLower().Contains("virtual")) continue;
+                if (iInterface.Description.ToLower().Contains("multiplexor")) continue;
                 
                 // get the list of Unicast Addresses
                 foreach (var ip in iInterface.GetIPProperties().UnicastAddresses)
