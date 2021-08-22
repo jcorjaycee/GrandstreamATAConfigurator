@@ -426,7 +426,7 @@ namespace GrandstreamATAConfigurator
                 }
             }
             Console.WriteLine();
-            Console.Write("Hmm... looks like we can't find a proper gateway on this network...");
+            Console.Write("Hmm... looks like we can't find any interfaces that will work for this...");
             Environment.Exit(-1);
             throw new InvalidOperationException();
         }
