@@ -8,6 +8,9 @@
 <!--        <RuntimeIdentifier>win-x64</RuntimeIdentifier>-->
 <!--        <PublishTrimmed>true</PublishTrimmed>-->
 <!--        <PublishReadyToRun>true</PublishReadyToRun>-->
+        
+<!--        when using Rider to publish self-contained: -->
+<!--        dotnet publish -r win-x64 &#45;&#45;self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:PublishTrimmed=true-->
     </PropertyGroup>
 
     <ItemGroup>
