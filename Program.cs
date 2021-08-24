@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 
@@ -14,12 +18,19 @@ namespace GrandstreamATAConfigurator
 {
     internal static class Program
     {
+        // BEGIN GLOBAL VARIABLES
+        
         // for locating, connecting to ATA
+        private static NetworkInterface _interfaceToUse;
         private static string _ip = "";
         
+        // for firmware upgrades
+        private static Version _currentVersionNumber;
+        private static string _serverIp;
+
         // global flag for factory resetting ATA
         private static bool _reset;
-        
+
         // Grandstream config variables
         private static string _adminPassword = "admin";
         private static string _authenticatePassword = "";
@@ -30,7 +41,7 @@ namespace GrandstreamATAConfigurator
         private static string _primaryServer = "";
         private const string TimeZone = "EST5EDT";
         private const string Username = "admin";
-        
+
         // used to port scan for ATA
         private static readonly int[] Ports = new[]
         {
@@ -47,6 +58,8 @@ namespace GrandstreamATAConfigurator
             254
         };
 
+        // END GLOBAL VARIABLES
+        
         
         // MAIN
         private static void Main()
@@ -57,8 +70,16 @@ namespace GrandstreamATAConfigurator
             Console.WriteLine(title);
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine();
+
+            // find which interface we should be on - WiFi, Ethernet, etc
+            _interfaceToUse = GetInterface();
             
-            _ip = GetLocalIPv4(GetInterface().NetworkInterfaceType);
+            // location of web server, should we need to upgrade firmware
+            _serverIp = GetLocalIPv4(_interfaceToUse.NetworkInterfaceType) + ":80";
+
+            // this variable gets mutated later to represent the ATA IP
+            // we declare it here to get the proper subnet
+            _ip = GetLocalIPv4(_interfaceToUse.NetworkInterfaceType);
 
             Console.WriteLine();
             Console.WriteLine("Now scanning your network for a Grandstream device...");
@@ -70,8 +91,9 @@ namespace GrandstreamATAConfigurator
                               "sure you're connected to the right network, then try again.");
                 return;
             }
+            
 
-            using var client = new SshClient(_ip, Username, _password);
+            var client = new SshClient(_ip, Username, _password);
             Console.WriteLine("Attempting connection...");
             try
             {
@@ -119,13 +141,57 @@ namespace GrandstreamATAConfigurator
                 Thread.Sleep(1000);
             }
 
+            Console.Clear();
+            
+            if (!UpToDate())
+            {
+                client.Connect();
+                using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
+
+                var commands = new[]
+                {
+                    "config",
+                    // set server type: HTTP
+                    "set 212 1",
+                    // set server address
+                    $"set 192 {_serverIp}",
+                    // save and exit
+                    "commit",
+                    "exit",
+                    // begin upgrade
+                    "upgrade",
+                    "upgrade",
+                    "y"
+                };
+
+                Console.WriteLine("ATA is out of date! Running upgrade...");
+                foreach (var command in commands)
+                {
+                    sshStream.WriteLine(command);
+                    // uncomment this to see what's being sent/received
+                    // string line;
+                    // while((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
+                    //     Console.WriteLine(line);
+                    Thread.Sleep(100);
+                }
+                Thread.Sleep(200);
+                sshStream.Close();
+                client.Disconnect();
+                Console.WriteLine("Waiting 3 minutes...");
+                var serverThread = new Thread(Server);
+                serverThread.Start();
+                // TODO: Figure out how to stop this server after x amount of time...
+                Thread.Sleep(180000);
+                
+            }
+
             GetParams();
 
             ResetOrConfigureAta(_reset);
         }
-        
+
         // extensions of main (for readability)
-        
+
         private static void GetParams()
         {
             var done = false;
@@ -143,7 +209,7 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine();
                     Console.Write("Your primary server? ");
                     _primaryServer = Console.ReadLine();
-                    if (_primaryServer == String.Empty)
+                    if (_primaryServer == string.Empty)
                         Console.WriteLine("Primary server cannot be empty...");
                     else
                         break;
@@ -166,7 +232,7 @@ namespace GrandstreamATAConfigurator
                 Console.Clear();
 
                 _reset = GetUserBool("Are we resetting the ATA first?");
-                
+
                 Console.Clear();
                 Console.WriteLine("Current password: " + _password);
                 Console.WriteLine("New password: " + _adminPassword);
@@ -203,7 +269,7 @@ namespace GrandstreamATAConfigurator
                 using var client = new SshClient(_ip, Username, _password);
                 string warning;
                 string[] commands;
-                
+
                 Console.Clear();
 
 
@@ -347,7 +413,7 @@ namespace GrandstreamATAConfigurator
         {
             while (true)
             {
-                Console.Write(prompt + " (Y/n)");
+                Console.Write(prompt + " (Y/n): ");
                 var reset = Console.ReadKey().Key;
                 // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
                 switch (reset)
@@ -362,13 +428,54 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("Sorry, that wasn't a valid input.");
             }
         }
-        
-        
+
+        private static bool UpToDate()
+        {
+            using var client = new SshClient(_ip, Username, _password);
+            client.Connect();
+            using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
+
+            try
+            {
+                // try to get the version from the version file
+                var sr = new StreamReader("version");
+                _currentVersionNumber = new Version(sr.ReadLine() ?? throw new InvalidOperationException());
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Seems the server is missing a version file. That's a problem!");
+                Environment.Exit(-3);
+            }
+
+            // request status to get ATA version
+            sshStream.WriteLine("status");
+            // go through each line
+            string line;
+            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
+            {
+                if (line.ToLower().Contains("program --"))
+                {
+                    var foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
+                    Console.WriteLine("Found program version: " + foundVersionNumber);
+                    Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
+                    return (_currentVersionNumber <= foundVersionNumber);
+                }
+
+                Thread.Sleep((100));
+            }
+
+            Console.WriteLine("Couldn't get a version number. This is a big problem!");
+            Environment.Exit(-2);
+            throw new InvalidOperationException();
+        }
+
+
         // interface scanning
 
         /* UP FRONT - I'd like to disclaim that this is probably not the best way to do this!
-         * This essentially just skips through all interfaces with the ASSUMPTION that only one will meet all requirements
+         * This essentially just skips through all interfaces with the ASSUMPTION that one will meet all requirements
          * of being Ethernet or 802.11, being in UP status, and not being described as virtual
+         * It can still fully miss interfaces which may not be valid for this purpose
          * I am completely open to better ways to do this
          */
         private static NetworkInterface GetInterface()
@@ -376,7 +483,7 @@ namespace GrandstreamATAConfigurator
             var client = new TcpClient();
 
             var bytes = Array.Empty<byte>();
-            
+
             // for every interface on the computer
             foreach (var iInterface in NetworkInterface.GetAllNetworkInterfaces())
             {
@@ -388,7 +495,7 @@ namespace GrandstreamATAConfigurator
                 // if it's described as a virtual adapter, we're not interested
                 if (iInterface.Description.ToLower().Contains("virtual")) continue;
                 if (iInterface.Description.ToLower().Contains("multiplexor")) continue;
-                
+
                 // get the list of Unicast Addresses
                 foreach (var ip in iInterface.GetIPProperties().UnicastAddresses)
                 {
@@ -425,15 +532,16 @@ namespace GrandstreamATAConfigurator
                     return iInterface;
                 }
             }
+
             Console.WriteLine();
             Console.Write("Hmm... looks like we can't find any interfaces that will work for this...");
             Environment.Exit(-1);
             throw new InvalidOperationException();
         }
 
-        
+
         // full port scanning for locating ATA
-        
+
         private static bool PortScan()
         {
             // for each possible IPv4
@@ -542,6 +650,16 @@ namespace GrandstreamATAConfigurator
 
             return output;
         }
-
+        private static void Server()
+        {
+            Console.WriteLine("Starting server...");
+            // TODO: Figure out how to shut this server down when done so it doesn't keep spewing info onto the console
+            // and so the app exits properly
+            WebHost.CreateDefaultBuilder()
+                .Configure(config => config.UseStaticFiles())
+                .UseUrls("http://" + _serverIp)
+                .UseShutdownTimeout(TimeSpan.FromSeconds(40))
+                .UseWebRoot("").Build().Run();
+        }
     }
 }
