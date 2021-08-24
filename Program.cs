@@ -89,6 +89,7 @@ namespace GrandstreamATAConfigurator
             {
                 Console.Write("Oops, we can't find a Grandstream device on this network. Make " +
                               "sure you're connected to the right network, then try again.");
+                Console.ReadKey();
                 return;
             }
             
@@ -444,6 +445,7 @@ namespace GrandstreamATAConfigurator
             catch (Exception)
             {
                 Console.WriteLine("Seems the server is missing a version file. That's a problem!");
+                Console.ReadKey();
                 Environment.Exit(-3);
             }
 
@@ -465,6 +467,7 @@ namespace GrandstreamATAConfigurator
             }
 
             Console.WriteLine("Couldn't get a version number. This is a big problem!");
+            Console.ReadKey();
             Environment.Exit(-2);
             throw new InvalidOperationException();
         }
@@ -535,6 +538,7 @@ namespace GrandstreamATAConfigurator
 
             Console.WriteLine();
             Console.Write("Hmm... looks like we can't find any interfaces that will work for this...");
+            Console.ReadKey();
             Environment.Exit(-1);
             throw new InvalidOperationException();
         }
