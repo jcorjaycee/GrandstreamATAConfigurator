@@ -60,6 +60,7 @@ namespace GrandstreamATAConfigurator
             
             _ip = GetLocalIPv4(GetInterface().NetworkInterfaceType);
 
+            Console.WriteLine();
             Console.WriteLine("Now scanning your network for a Grandstream device...");
             if (PortScan())
                 Console.WriteLine("Grandstream device found! Using IP: " + _ip);
@@ -268,7 +269,7 @@ namespace GrandstreamATAConfigurator
             while (true)
             {
                 Console.WriteLine();
-                using var client = new SshClient(_ip, Username, _password);
+                var client = new SshClient(_ip, Username, _password);
                 string warning;
                 string[] commands;
                 
@@ -375,6 +376,9 @@ namespace GrandstreamATAConfigurator
                 sshStream.Close();
                 client.Disconnect();
 
+                // password may have changed, redeclare client
+                client = new SshClient(_ip, Username, _adminPassword);
+
                 Thread.Sleep(30000);
                 for (var i = 0; i < 60; i++)
                 {
@@ -398,6 +402,8 @@ namespace GrandstreamATAConfigurator
                     reset = false;
                     continue;
                 }
+                
+                client.Dispose();
 
                 Console.WriteLine("Have a nice day ＜（＾－＾）＞");
                 Console.WriteLine();
