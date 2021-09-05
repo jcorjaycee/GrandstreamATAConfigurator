@@ -468,7 +468,10 @@ namespace GrandstreamATAConfigurator
                     var foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
                     Console.WriteLine("Found program version: " + foundVersionNumber);
                     Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
-                    return (_currentVersionNumber <= foundVersionNumber);
+                    if (_currentVersionNumber > foundVersionNumber)
+                    {
+                        return !GetUserBool("ATA is out of date! Shall we upgrade?");
+                    }
                 }
 
                 Thread.Sleep((100));
