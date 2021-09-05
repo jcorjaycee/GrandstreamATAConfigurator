@@ -8,15 +8,9 @@
 <!--        <RuntimeIdentifier>win-x64</RuntimeIdentifier>-->
 <!--        <PublishTrimmed>true</PublishTrimmed>-->
 <!--        <PublishReadyToRun>true</PublishReadyToRun>-->
-        
-<!--        when using Rider to publish self-contained: -->
-<!--        dotnet publish -r win-x64 &#45;&#45;self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:PublishTrimmed=true-->
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
-      <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.2.7" />
-      <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
       <PackageReference Include="SSH.NET" Version="2020.0.1" />
     </ItemGroup>
 
