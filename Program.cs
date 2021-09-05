@@ -81,6 +81,26 @@ namespace GrandstreamATAConfigurator
         
         // extensions of main (for readability)
         
+        private static bool GetUserBool(string prompt)
+        {
+            while (true)
+            {
+                Console.Write(prompt + " (Y/n): ");
+                var reset = Console.ReadKey().Key;
+                // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+                switch (reset)
+                {
+                    case ConsoleKey.Enter:
+                    case ConsoleKey.Y:
+                        return true;
+                    case ConsoleKey.N:
+                        return false;
+                }
+
+                Console.WriteLine("Sorry, that wasn't a valid input.");
+            }
+        }
+        
         private static void AttemptConnect()
         {
             var client = new SshClient(_ip, Username, _password);
@@ -446,7 +466,9 @@ namespace GrandstreamATAConfigurator
                     }
 
                     // if we got here, we found it!
+                    Console.WriteLine();
                     Console.WriteLine("Found interface: " + iInterface.Name);
+                    if (!GetUserBool("Is this the correct interface?")) break;
                     return iInterface;
                 }
             }
