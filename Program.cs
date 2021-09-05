@@ -70,7 +70,21 @@ namespace GrandstreamATAConfigurator
                 return;
             }
 
-            using var client = new SshClient(_ip, Username, _password);
+            AttemptConnect();
+
+            Console.Clear();
+
+            GetParams();
+
+            ResetOrConfigureAta(_reset);
+        }
+        
+        // extensions of main (for readability)
+        
+        private static void AttemptConnect()
+        {
+            var client = new SshClient(_ip, Username, _password);
+
             Console.WriteLine("Attempting connection...");
             try
             {
@@ -88,9 +102,10 @@ namespace GrandstreamATAConfigurator
                     _password = Console.ReadLine();
                     try
                     {
+                        client = new SshClient(_ip, Username, _password);
                         client.Connect();
                         client.Disconnect();
-                        break;
+                        return;
                     }
                     catch
                     {
@@ -108,7 +123,7 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine();
                 Console.WriteLine("Press any key to close.");
                 Console.ReadKey();
-                return;
+                Environment.Exit(0);
             }
 
             Console.WriteLine("OK!");
@@ -117,13 +132,7 @@ namespace GrandstreamATAConfigurator
                 Console.Write(".");
                 Thread.Sleep(1000);
             }
-
-            GetParams();
-
-            ResetOrConfigureAta(_reset);
         }
-        
-        // extensions of main (for readability)
         
         private static void GetParams()
         {
