@@ -258,6 +258,8 @@ namespace GrandstreamATAConfigurator
                 _phoneNumber = Console.ReadLine();
                 _phoneNumber = new string(
                     (_phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray()); // strips any non-numeric characters
+                if (_phoneNumber.Length == 10 && !_phoneNumber.StartsWith("1")) // if the number doesn't start with a 1
+                    _phoneNumber = "1" + _phoneNumber;
                 if (_phoneNumber.Length == 11)
                     return;
                 Console.WriteLine("Sorry, that's not a valid phone number. Please try again.");
