@@ -92,57 +92,12 @@ namespace GrandstreamATAConfigurator
                 Console.ReadKey();
                 return;
             }
-            
 
-            var client = new SshClient(_ip, Username, _password);
-            Console.WriteLine("Attempting connection...");
-            try
-            {
-                // just try connecting using default credentials, if they work awesome, if not prompt
-                client.Connect();
-                client.Disconnect();
-            }
-            catch (SshAuthenticationException)
-            {
-                for (var i = 0; i < 3; i++)
-                {
-                    Console.Write(i == 0
-                        ? "Please enter the password for the ATA. This may be a customer number: "
-                        : "Hmm, that password didn't work. Try again: ");
-                    _password = Console.ReadLine();
-                    try
-                    {
-                        client.Connect();
-                        client.Disconnect();
-                        break;
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-                }
-
-                Console.WriteLine();
-                Console.WriteLine("======================================================");
-                Console.WriteLine("Looks like the password check failed three times.");
-                Console.WriteLine("Best thing to do from here is factory reset your ATA.");
-                Console.WriteLine("Using a pin, paperclip, etc. press and hold the reset button on your ATA");
-                Console.WriteLine("until the lights turn off. Once the globe light turns on, try again.");
-                Console.WriteLine("======================================================");
-                Console.WriteLine();
-                Console.WriteLine("Press any key to close.");
-                Console.ReadKey();
-                return;
-            }
-
-            Console.WriteLine("OK!");
-            for (var i = 0; i < 3; i++)
-            {
-                Console.Write(".");
-                Thread.Sleep(1000);
-            }
+            AttemptConnect();
 
             Console.Clear();
+            
+            var client = new SshClient(_ip, Username, _password);
             
             if (!UpToDate())
             {
@@ -427,6 +382,59 @@ namespace GrandstreamATAConfigurator
                 }
 
                 Console.WriteLine("Sorry, that wasn't a valid input.");
+            }
+        }
+
+        private static void AttemptConnect()
+        {
+            var client = new SshClient(_ip, Username, _password);
+            
+            Console.WriteLine("Attempting connection...");
+            try
+            {
+                // just try connecting using default credentials, if they work awesome, if not prompt
+                client.Connect();
+                client.Disconnect();
+            }
+            catch (SshAuthenticationException)
+            {
+                for (var i = 0; i < 3; i++)
+                {
+                    Console.Write(i == 0
+                        ? "Please enter the password for the ATA. This may be a customer number: "
+                        : "Hmm, that password didn't work. Try again: ");
+                    _password = Console.ReadLine();
+                    try
+                    {
+                        client = new SshClient(_ip, Username, _password);
+                        client.Connect();
+                        client.Disconnect();
+                        return;
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("======================================================");
+                Console.WriteLine("Looks like the password check failed three times.");
+                Console.WriteLine("Best thing to do from here is factory reset your ATA.");
+                Console.WriteLine("Using a pin, paperclip, etc. press and hold the reset button on your ATA");
+                Console.WriteLine("until the lights turn off. Once the globe light turns on, try again.");
+                Console.WriteLine("======================================================");
+                Console.WriteLine();
+                Console.WriteLine("Press any key to close.");
+                Console.ReadKey();
+                Environment.Exit(0);
+            }
+
+            Console.WriteLine("OK!");
+            for (var i = 0; i < 3; i++)
+            {
+                Console.Write(".");
+                Thread.Sleep(1000);
             }
         }
 
