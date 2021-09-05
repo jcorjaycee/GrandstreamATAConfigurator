@@ -67,6 +67,7 @@ namespace GrandstreamATAConfigurator
             {
                 Console.Write("Oops, we can't find a Grandstream device on this network. Make " +
                               "sure you're connected to the right network, then try again.");
+                Console.ReadKey();
                 return;
             }
 
@@ -423,7 +424,7 @@ namespace GrandstreamATAConfigurator
             var client = new TcpClient();
 
             var bytes = Array.Empty<byte>();
-            
+
             // for every interface on the computer
             foreach (var iInterface in NetworkInterface.GetAllNetworkInterfaces())
             {
@@ -435,7 +436,7 @@ namespace GrandstreamATAConfigurator
                 // if it's described as a virtual adapter, we're not interested
                 if (iInterface.Description.ToLower().Contains("virtual")) continue;
                 if (iInterface.Description.ToLower().Contains("multiplexor")) continue;
-                
+
                 // get the list of Unicast Addresses
                 foreach (var ip in iInterface.GetIPProperties().UnicastAddresses)
                 {
@@ -472,7 +473,10 @@ namespace GrandstreamATAConfigurator
                     return iInterface;
                 }
             }
-            Console.Write("Hmm... looks like we can't find a proper gateway on this network...");
+
+            Console.WriteLine();
+            Console.Write("Hmm... looks like we can't find any interfaces that will work for this...");
+            Console.ReadKey();
             Environment.Exit(-1);
             throw new InvalidOperationException();
         }
