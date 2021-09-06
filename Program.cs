@@ -16,10 +16,10 @@ namespace GrandstreamATAConfigurator
     {
         // for locating, connecting to ATA
         private static string _ip = "";
-        
+
         // global flag for factory resetting ATA
         private static bool _reset;
-        
+
         // Grandstream config variables
         private static string _adminPassword = "admin";
         private static string _authenticatePassword = "";
@@ -30,7 +30,7 @@ namespace GrandstreamATAConfigurator
         private static string _primaryServer = "";
         private const string TimeZone = "EST5EDT";
         private const string Username = "admin";
-        
+
         // used to port scan for ATA
         private static readonly int[] Ports = new[]
         {
@@ -47,7 +47,7 @@ namespace GrandstreamATAConfigurator
             254
         };
 
-        
+
         // MAIN
         private static void Main()
         {
@@ -57,7 +57,7 @@ namespace GrandstreamATAConfigurator
             Console.WriteLine(title);
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine();
-            
+
             _ip = GetLocalIPv4(GetInterface().NetworkInterfaceType);
 
             Console.WriteLine();
@@ -80,9 +80,9 @@ namespace GrandstreamATAConfigurator
 
             ResetOrConfigureAta(_reset);
         }
-        
+
         // extensions of main (for readability)
-        
+
         private static bool GetUserBool(string prompt)
         {
             while (true)
@@ -102,7 +102,7 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("Sorry, that wasn't a valid input.");
             }
         }
-        
+
         private static void AttemptConnect()
         {
             var client = new SshClient(_ip, Username, _password);
@@ -155,7 +155,7 @@ namespace GrandstreamATAConfigurator
                 Thread.Sleep(1000);
             }
         }
-        
+
         private static void GetParams()
         {
             var done = false;
@@ -235,14 +235,14 @@ namespace GrandstreamATAConfigurator
                 var client = new SshClient(_ip, Username, _password);
                 string warning;
                 string[] commands;
-                
+
                 Console.Clear();
 
 
                 if (reset)
                 {
                     warning = "We will now reset the ATA. Do NOT touch anything during this process.";
-                    commands = new[] {"reset 0", "y"};
+                    commands = new[] { "reset 0", "y" };
                 }
                 else
                 {
@@ -311,6 +311,7 @@ namespace GrandstreamATAConfigurator
                 {
                     client = new SshClient(_ip, "admin", "admin");
                 }
+
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
                 var index = 0;
@@ -373,7 +374,7 @@ namespace GrandstreamATAConfigurator
                     reset = false;
                     continue;
                 }
-                
+
                 client.Dispose();
 
                 Console.WriteLine("Have a nice day ＜（＾－＾）＞");
@@ -387,8 +388,8 @@ namespace GrandstreamATAConfigurator
                 break;
             }
         }
-        
-        
+
+
         // interface scanning
 
         /* UP FRONT - I'd like to disclaim that this is probably not the best way to do this!
@@ -432,7 +433,7 @@ namespace GrandstreamATAConfigurator
                 // for each gateway IP we've defined
                 foreach (var gateway in Gateways)
                 {
-                    bytes[3] = (byte) gateway;
+                    bytes[3] = (byte)gateway;
                     IPAddress newIp = new(bytes);
                     try
                     {
@@ -459,16 +460,16 @@ namespace GrandstreamATAConfigurator
             throw new InvalidOperationException();
         }
 
-        
+
         // full port scanning for locating ATA
-        
+
         private static bool PortScan()
         {
             // for each possible IPv4
             for (var i = 1; i < 255; i++)
             {
                 var bytes = IPAddress.Parse(_ip).GetAddressBytes();
-                bytes[3] = (byte) i;
+                bytes[3] = (byte)i;
                 IPAddress newIp = new(bytes);
 
                 foreach (var s in Ports)
@@ -570,6 +571,5 @@ namespace GrandstreamATAConfigurator
 
             return output;
         }
-
     }
 }
