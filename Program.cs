@@ -478,22 +478,38 @@ namespace GrandstreamATAConfigurator
 
         private static bool UpToDate(bool skipPrompt)
         {
-            using var client = new SshClient(_ip, Username, _password);
-            client.Connect();
-            using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
-
+            if (!File.Exists("assets/ht801fw.bin"))
+            {
+                Console.WriteLine("Not seeing any update files, so not checking for an update...");
+                for (var i = 0; i < 3; i++)
+                {
+                    Console.Write(".");
+                    Thread.Sleep(1000);
+                }
+                return true;
+            }
+            
             try
             {
                 // try to get the version from the version file
-                var sr = new StreamReader("version");
+                var sr = new StreamReader("assets/version");
                 _currentVersionNumber = new Version(sr.ReadLine() ?? throw new InvalidOperationException());
             }
             catch (Exception)
             {
-                Console.WriteLine("Seems the server is missing a version file. That's a problem!");
-                Console.ReadKey();
-                Environment.Exit(-3);
+                Console.WriteLine("Seems the server is missing a valid version file." +
+                                  " Please add one if you wish to enable updates!");
+                for (var i = 0; i < 3; i++)
+                {
+                    Console.Write(".");
+                    Thread.Sleep(1000);
+                }
+                return true;
             }
+            
+            using var client = new SshClient(_ip, Username, _password);
+            client.Connect();
+            using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
             // request status to get ATA version
             sshStream.WriteLine("status");
