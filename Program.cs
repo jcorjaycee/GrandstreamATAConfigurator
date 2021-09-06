@@ -370,7 +370,15 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine(new string('=', warning.Length));
                 Console.WriteLine();
 
-                client.Connect();
+                // try to connect; if authentication fails, a reset may have set it back to defaults
+                try
+                {
+                    client.Connect();
+                }
+                catch (SshAuthenticationException)
+                {
+                    client = new SshClient(_ip, "admin", "admin");
+                }
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
                 var index = 0;
