@@ -173,7 +173,7 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine();
                     Console.Write("Your primary server? ");
                     _primaryServer = Console.ReadLine();
-                    if (_primaryServer == String.Empty)
+                    if (_primaryServer == string.Empty)
                         Console.WriteLine("Primary server cannot be empty...");
                     else
                         break;
@@ -187,7 +187,7 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine();
                     Console.Write("What should the new ATA password be? ");
                     _adminPassword = Console.ReadLine();
-                    if (_adminPassword == String.Empty)
+                    if (_adminPassword == string.Empty)
                         Console.WriteLine("ATA password cannot be empty...");
                     else
                         break;
@@ -195,58 +195,19 @@ namespace GrandstreamATAConfigurator
 
                 Console.Clear();
 
-                new Action(() =>
-                {
-                    while (true)
-                    {
-                        Console.Write("Are we resetting the ATA first? [Y/n]");
-                        var reset = Console.ReadKey().Key;
-                        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                        switch (reset)
-                        {
-                            case ConsoleKey.Enter:
-                            case ConsoleKey.Y:
-                                _reset = true;
-                                return;
-                            case ConsoleKey.N:
-                                _reset = false;
-                                return;
-                        }
+                _reset = GetUserBool("Are we resetting the ATA first?");
 
-                        Console.WriteLine("Sorry, that wasn't a valid input.");
-                    }
-                })();
+                Console.Clear();
+                Console.WriteLine("Current password: " + _password);
+                Console.WriteLine("New password: " + _adminPassword);
+                Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
+                Console.WriteLine("SIP password: " + _authenticatePassword);
+                Console.WriteLine("Primary server: " + _primaryServer);
+                Console.WriteLine("Failover server: " + _failoverServer);
+                Console.WriteLine("Resetting the ATA first: " + _reset);
+                Console.WriteLine();
 
-                new Action(() =>
-                {
-                    while (true)
-                    {
-                        Console.Clear();
-                        Console.WriteLine("Current password: " + _password);
-                        Console.WriteLine("New password: " + _adminPassword);
-                        Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
-                        Console.WriteLine("SIP password: " + _authenticatePassword);
-                        Console.WriteLine("Primary server: " + _primaryServer);
-                        Console.WriteLine("Failover server: " + _failoverServer);
-                        Console.WriteLine("Resetting the ATA first: " + _reset);
-                        Console.WriteLine();
-                        Console.Write("Is all of the above correct? ");
-                        var good = Console.ReadKey().Key;
-                        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                        switch (good)
-                        {
-                            case ConsoleKey.Enter:
-                            case ConsoleKey.Y:
-                                done = true;
-                                return;
-                            case ConsoleKey.N:
-                                return;
-                        }
-
-                        Console.WriteLine("Sorry, that wasn't a valid input.");
-                        Thread.Sleep(3000);
-                    }
-                })();
+                done = GetUserBool("Is all of the above correct?");
             }
         }
 
@@ -341,7 +302,15 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine(new string('=', warning.Length));
                 Console.WriteLine();
 
-                client.Connect();
+                // try to connect; if authentication fails, a reset may have set it back to defaults
+                try
+                {
+                    client.Connect();
+                }
+                catch (SshAuthenticationException)
+                {
+                    client = new SshClient(_ip, "admin", "admin");
+                }
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
                 var index = 0;
@@ -423,8 +392,9 @@ namespace GrandstreamATAConfigurator
         // interface scanning
 
         /* UP FRONT - I'd like to disclaim that this is probably not the best way to do this!
-         * This essentially just skips through all interfaces with the ASSUMPTION that only one will meet all requirements
+         * This essentially just skips through all interfaces with the ASSUMPTION that one will meet all requirements
          * of being Ethernet or 802.11, being in UP status, and not being described as virtual
+         * It can still fully miss interfaces which may not be valid for this purpose
          * I am completely open to better ways to do this
          */
         private static NetworkInterface GetInterface()
