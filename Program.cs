@@ -19,11 +19,11 @@ namespace GrandstreamATAConfigurator
     internal static class Program
     {
         // BEGIN GLOBAL VARIABLES
-        
+
         // for locating, connecting to ATA
         private static NetworkInterface _interfaceToUse;
         private static string _ip = "";
-        
+
         // for firmware upgrades
         private static Version _currentVersionNumber;
         private static string _serverIp;
@@ -59,8 +59,8 @@ namespace GrandstreamATAConfigurator
         };
 
         // END GLOBAL VARIABLES
-        
-        
+
+
         // MAIN
         private static void Main()
         {
@@ -73,7 +73,7 @@ namespace GrandstreamATAConfigurator
 
             // find which interface we should be on - WiFi, Ethernet, etc
             _interfaceToUse = GetInterface();
-            
+
             // location of web server, should we need to upgrade firmware
             _serverIp = GetLocalIPv4(_interfaceToUse.NetworkInterfaceType) + ":80";
 
@@ -92,7 +92,7 @@ namespace GrandstreamATAConfigurator
                 Console.ReadKey();
                 return;
             }
-            
+
             AttemptConnect();
 
             Console.Clear();
@@ -130,6 +130,7 @@ namespace GrandstreamATAConfigurator
                     //     Console.WriteLine(line);
                     Thread.Sleep(100);
                 }
+
                 Thread.Sleep(200);
                 sshStream.Close();
                 client.Disconnect();
@@ -138,7 +139,7 @@ namespace GrandstreamATAConfigurator
                 serverThread.Start();
                 // TODO: Figure out how to stop this server after x amount of time...
                 Thread.Sleep(180000);
-                
+
                 for (var i = 0; i < 60; i++)
                 {
                     try
@@ -161,7 +162,6 @@ namespace GrandstreamATAConfigurator
                     Console.ReadKey();
                     Environment.Exit(-11);
                 }
-                
             }
 
             GetParams();
@@ -170,8 +170,8 @@ namespace GrandstreamATAConfigurator
         }
 
         // extensions of main (for readability)
-        
-         private static void AttemptConnect()
+
+        private static void AttemptConnect()
         {
             var client = new SshClient(_ip, Username, _password);
 
@@ -310,7 +310,7 @@ namespace GrandstreamATAConfigurator
                 if (reset)
                 {
                     warning = "We will now reset the ATA. Do NOT touch anything during this process.";
-                    commands = new[] {"reset 0", "y"};
+                    commands = new[] { "reset 0", "y" };
                 }
                 else
                 {
@@ -379,6 +379,7 @@ namespace GrandstreamATAConfigurator
                 {
                     client = new SshClient(_ip, "admin", "admin");
                 }
+
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
                 var index = 0;
@@ -414,7 +415,7 @@ namespace GrandstreamATAConfigurator
 
                 sshStream.Close();
                 client.Disconnect();
-                
+
                 // password may have changed, redeclare client
                 client = new SshClient(_ip, Username, _adminPassword);
 
@@ -441,7 +442,7 @@ namespace GrandstreamATAConfigurator
                     reset = false;
                     continue;
                 }
-                
+
                 client.Dispose();
 
                 Console.WriteLine("Have a nice day!");
@@ -486,9 +487,10 @@ namespace GrandstreamATAConfigurator
                     Console.Write(".");
                     Thread.Sleep(1000);
                 }
+
                 return true;
             }
-            
+
             try
             {
                 // try to get the version from the version file
@@ -504,9 +506,10 @@ namespace GrandstreamATAConfigurator
                     Console.Write(".");
                     Thread.Sleep(1000);
                 }
+
                 return true;
             }
-            
+
             using var client = new SshClient(_ip, Username, _password);
             client.Connect();
             using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
@@ -584,7 +587,7 @@ namespace GrandstreamATAConfigurator
                 // for each gateway IP we've defined
                 foreach (var gateway in Gateways)
                 {
-                    bytes[3] = (byte) gateway;
+                    bytes[3] = (byte)gateway;
                     IPAddress newIp = new(bytes);
                     try
                     {
@@ -620,7 +623,7 @@ namespace GrandstreamATAConfigurator
             for (var i = 1; i < 255; i++)
             {
                 var bytes = IPAddress.Parse(_ip).GetAddressBytes();
-                bytes[3] = (byte) i;
+                bytes[3] = (byte)i;
                 IPAddress newIp = new(bytes);
 
                 foreach (var s in Ports)
@@ -722,6 +725,7 @@ namespace GrandstreamATAConfigurator
 
             return output;
         }
+
         private static void Server()
         {
             Console.WriteLine("Starting server...");
