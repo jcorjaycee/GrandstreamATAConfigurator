@@ -65,7 +65,7 @@ namespace GrandstreamATAConfigurator
         private static void Main()
         {
             // print title card
-            const string title = "Start.ca Grandstream SSH Setup";
+            const string title = "Grandstream SSH Setup";
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine(title);
             Console.WriteLine(new string('=', title.Length));
@@ -99,7 +99,7 @@ namespace GrandstreamATAConfigurator
 
             var client = new SshClient(_ip, Username, _password);
 
-            if (!UpToDate())
+            if (!UpToDate(false))
             {
                 client.Connect();
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
@@ -138,6 +138,29 @@ namespace GrandstreamATAConfigurator
                 serverThread.Start();
                 // TODO: Figure out how to stop this server after x amount of time...
                 Thread.Sleep(180000);
+                
+                for (var i = 0; i < 60; i++)
+                {
+                    try
+                    {
+                        client.Connect();
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        Thread.Sleep(2000);
+                    }
+                }
+
+                if (!UpToDate(true))
+                {
+                    const string updateFailedError = "THE UPDATE FAILED. Please investigate manually...";
+                    Console.WriteLine(new string('=', updateFailedError.Length));
+                    Console.WriteLine(updateFailedError);
+                    Console.WriteLine(new string('=', updateFailedError.Length));
+                    Console.ReadKey();
+                    Environment.Exit(-11);
+                }
                 
             }
 
@@ -445,7 +468,7 @@ namespace GrandstreamATAConfigurator
             }
         }
 
-        private static bool UpToDate()
+        private static bool UpToDate(bool skipPrompt)
         {
             using var client = new SshClient(_ip, Username, _password);
             client.Connect();
@@ -473,10 +496,13 @@ namespace GrandstreamATAConfigurator
                 if (line.ToLower().Contains("program --"))
                 {
                     var foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
+                    if (skipPrompt)
+                        return _currentVersionNumber == foundVersionNumber;
                     Console.WriteLine("Found program version: " + foundVersionNumber);
                     Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
                     if (_currentVersionNumber > foundVersionNumber)
                     {
+                        // we ! this because UpToDate() returns false if we need to upgrade
                         return !GetUserBool("ATA is out of date! Shall we upgrade?");
                     }
                 }
