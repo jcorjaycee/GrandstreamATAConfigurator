@@ -360,7 +360,7 @@ namespace GrandstreamATAConfigurator
                             case 19:
                                 Console.WriteLine("Setting local dialer settings...");
                                 break;
-                            case 32:
+                            case 34:
                                 Console.WriteLine("Saving changes and rebooting...");
                                 break;
                         }
