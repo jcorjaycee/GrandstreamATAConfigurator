@@ -53,7 +53,7 @@ namespace GrandstreamATAConfigurator
             _interfaceToUse = NetworkUtils.GetInterface();
 
             // location of web server, should we need to upgrade firmware
-            _serverIp = NetworkUtils.GetLocalIPv4(_interfaceToUse) + ":" + port;
+            _serverIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
 
             // this variable gets mutated later to represent the ATA IP
             // we declare it here to get the proper subnet
@@ -87,7 +87,7 @@ namespace GrandstreamATAConfigurator
                     // set server type: HTTP
                     "set 212 1",
                     // set server address
-                    $"set 192 {_serverIp}",
+                    $"set 192 {_serverIp}:{Port}",
                     // save and exit
                     "commit",
                     "exit",
@@ -120,7 +120,7 @@ namespace GrandstreamATAConfigurator
                 client.Disconnect();
 
                 // start HTTP server for firmware hosting
-                Server.StartServer(_serverIp);
+                Server.StartServer(_serverIp, Port, _ataIp);
 
                 // server has now been closed, however we need to give the ATA a moment
                 // before it begins its reboot

@@ -13,9 +13,24 @@ namespace GrandstreamATAConfigurator
     {
         internal static IWebHost Builder;
         
-        public static void StartServer(string ip)
+        public static void StartServer(string ip, int port, string ataIp)
         {
-            Builder = BuildWebHost(ip);
+            if(new TcpClient().ConnectAsync(ip, port).Wait(100))
+            {
+                Console.Clear();
+                Console.WriteLine(new string('=', 40));
+                Console.WriteLine("Can't start the update server, something is already operating on port " + port +
+                                  ".");
+                Console.WriteLine("Please do one of the following: ");
+                Console.WriteLine("a) stop any running HTTP servers on this machine,");
+                Console.WriteLine("b) update the ATA manually (can be done at http://" + ataIp + "), or");
+                Console.WriteLine("c) Skip the update check when running the program.");
+                Console.WriteLine(new string('=', 40));
+                Console.ReadKey();
+                Environment.Exit(-5);
+            }
+
+            Builder = BuildWebHost(ip, port);
 
             Task.Run(() =>
             {
@@ -25,7 +40,7 @@ namespace GrandstreamATAConfigurator
             Builder.WaitForShutdown();
         }
         
-        private static IWebHost BuildWebHost(string ip)
+        private static IWebHost BuildWebHost(string ip, int port)
         {
             var path = Path.Join(Directory.GetCurrentDirectory(), "assets");
 
@@ -36,7 +51,7 @@ namespace GrandstreamATAConfigurator
                 .UseKestrel()
                 .UseContentRoot(path)
                 .UseWebRoot(path)
-                .UseUrls($"http://{ip}")
+                .UseUrls($"http://{ip}:{port}")
                 .SuppressStatusMessages(true)
                 .Build();
         }
