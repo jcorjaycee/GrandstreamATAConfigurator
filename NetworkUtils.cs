@@ -126,7 +126,8 @@ namespace GrandstreamATAConfigurator
                         if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
                         // found a device that responds to one of the ports!
                         var macAddress = GetMacByIp(newIpBuilder.ToString());
-                        Console.WriteLine($"{newIpBuilder}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
+                        // uncomment the below line to output each IP found to the console
+                        // Console.WriteLine($"{newIpBuilder}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
                         // if it's not a Grandstream device we're not going any further
                         if (!IsGrandstream(macAddress)) continue;
                         newIp = newIpBuilder.ToString();

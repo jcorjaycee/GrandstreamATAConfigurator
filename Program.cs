@@ -60,7 +60,7 @@ namespace GrandstreamATAConfigurator
             _ataIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
 
             Console.WriteLine();
-            Console.WriteLine("Now scanning your network for a Grandstream device...");
+            Console.WriteLine("Now scanning your network for a Grandstream device... Please wait.");
             if (NetworkUtils.PortScan(_ataIp, out _ataIp)) // we found something!
                 Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
             else // no devices found...
