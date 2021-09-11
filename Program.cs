@@ -15,8 +15,8 @@ namespace GrandstreamATAConfigurator
 
         // for locating, connecting to ATA
         private static NetworkInterface _interfaceToUse;
-        public static string Ip = "";
-        private static string port = "80";
+        private static string _ataIp = "";
+        private const int Port = 80;
 
         // for firmware upgrades
         private static Version _currentVersionNumber;
@@ -57,12 +57,12 @@ namespace GrandstreamATAConfigurator
 
             // this variable gets mutated later to represent the ATA IP
             // we declare it here to get the proper subnet
-            Ip = NetworkUtils.GetLocalIPv4(_interfaceToUse);
+            _ataIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
 
             Console.WriteLine();
             Console.WriteLine("Now scanning your network for a Grandstream device...");
-            if (NetworkUtils.PortScan()) // we found something!
-                Console.WriteLine("Grandstream device found! Using IP: " + Ip);
+            if (NetworkUtils.PortScan(_ataIp, out _ataIp)) // we found something!
+                Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
             else // no devices found...
             {
                 Console.Write("Oops, we can't find a Grandstream device on this network. Make " +
@@ -75,7 +75,7 @@ namespace GrandstreamATAConfigurator
             Console.Clear();
 
             // ssh into ATA and check if ATA is up to date
-            var client = new SshClient(Ip, Username, _password);
+            var client = new SshClient(_ataIp, Username, _password);
             if (!IsUpToDate(false))
             {
                 client.Connect();
@@ -138,7 +138,7 @@ namespace GrandstreamATAConfigurator
                         Environment.Exit(-19);
                     }
                     
-                    if (!ping.ConnectAsync(Ip, 80).Wait(100))
+                    if (!ping.ConnectAsync(_ataIp, 80).Wait(100))
                         Thread.Sleep(5000);
                     else break;
                 }
@@ -165,7 +165,7 @@ namespace GrandstreamATAConfigurator
 
         private static void AttemptConnect()
         {
-            var client = new SshClient(Ip, Username, _password); // init SshClient
+            var client = new SshClient(_ataIp, Username, _password); // init SshClient
 
             Console.WriteLine("Attempting connection...");
 
@@ -186,7 +186,7 @@ namespace GrandstreamATAConfigurator
                     try
                     {
                         // redeclare client with new password
-                        client = new SshClient(Ip, Username, _password);
+                        client = new SshClient(_ataIp, Username, _password);
                         client.Connect();
                         client.Disconnect();
                         return;
@@ -299,7 +299,7 @@ namespace GrandstreamATAConfigurator
             while (true)
             {
                 Console.WriteLine();
-                var client = new SshClient(Ip, Username, _password); // init SshClient
+                var client = new SshClient(_ataIp, Username, _password); // init SshClient
                 string warning;
                 string[] commands;
 
@@ -377,7 +377,7 @@ namespace GrandstreamATAConfigurator
                 {
                     try
                     {
-                        client = new SshClient(Ip, "admin", "admin");
+                        client = new SshClient(_ataIp, "admin", "admin");
                         client.Connect();
                     }
                     catch (SshAuthenticationException)
@@ -433,7 +433,7 @@ namespace GrandstreamATAConfigurator
                 client.Disconnect();
 
                 // password may have changed, redeclare client
-                client = new SshClient(Ip, Username, _adminPassword);
+                client = new SshClient(_ataIp, Username, _adminPassword);
 
                 Thread.Sleep(30000);
 
@@ -536,7 +536,7 @@ namespace GrandstreamATAConfigurator
                 }
             }
 
-            using var client = new SshClient(Ip, Username, _password);
+            using var client = new SshClient(_ataIp, Username, _password);
             client.Connect();
             using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 

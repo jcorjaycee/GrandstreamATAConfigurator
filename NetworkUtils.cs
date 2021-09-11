@@ -108,14 +108,14 @@ namespace GrandstreamATAConfigurator
             return Regex.IsMatch(mac, pattern);
         }
 
-        public static bool PortScan()
+        public static bool PortScan(string ip, out string newIp)
         {
             // for each possible IPv4
             for (var i = 1; i < 255; i++)
             {
-                var bytes = IPAddress.Parse(Program.Ip).GetAddressBytes();
+                var bytes = IPAddress.Parse(ip).GetAddressBytes();
                 bytes[3] = (byte)i;
-                IPAddress newIp = new(bytes);
+                IPAddress newIpBuilder = new(bytes);
 
                 foreach (var s in Ports)
                 {
@@ -123,24 +123,25 @@ namespace GrandstreamATAConfigurator
                     try
                     {
                         // if we can't connect to the IP in question, move on
-                        if (!scan.ConnectAsync(newIp, s).Wait(20)) continue;
+                        if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
                         // found a device that responds to one of the ports!
-                        var macAddress = GetMacByIp(newIp.ToString());
-                        Console.WriteLine($"{newIp}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
+                        var macAddress = GetMacByIp(newIpBuilder.ToString());
+                        Console.WriteLine($"{newIpBuilder}[{s}] | FOUND, MAC: {macAddress}", Color.Green);
                         // if it's not a Grandstream device we're not going any further
                         if (!IsGrandstream(macAddress)) continue;
-                        Program.Ip = newIp.ToString();
+                        newIp = newIpBuilder.ToString();
                         return true;
                     }
                     catch (Exception e) // probably a network error
                     {
-                        Console.WriteLine("Whoops, couldn't get that... " + newIp);
+                        Console.WriteLine("Whoops, couldn't get that... " + newIpBuilder);
                         Console.WriteLine(e);
                         throw;
                     }
                 }
             }
 
+            newIp = "";
             return false;
         }
 
