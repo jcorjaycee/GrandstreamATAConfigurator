@@ -43,6 +43,7 @@ namespace GrandstreamATAConfigurator
         private static void Main()
         {
             // print title card
+            Console.Clear();
             const string title = "Grandstream SSH Setup";
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine(title);
@@ -98,7 +99,8 @@ namespace GrandstreamATAConfigurator
                 };
 
                 Console.Clear();
-                const string updatingMessage = "The ATA will now upgrade its firmware. Do NOT touch anything!";
+                const string updatingMessage =
+                    "The ATA will now upgrade its firmware. Do NOT touch anything during this process.";
                 Console.WriteLine(new string('=', updatingMessage.Length));
                 Console.WriteLine(updatingMessage);
                 Console.WriteLine(new string('=', updatingMessage.Length));
@@ -126,7 +128,6 @@ namespace GrandstreamATAConfigurator
                 // before it begins its reboot
                 Thread.Sleep(10000);
 
-                using var ping = new TcpClient();
                 // ping ATA until we receive a response
                 for (var i = 0; i < 60; i++)
                 {
@@ -137,10 +138,16 @@ namespace GrandstreamATAConfigurator
                         Console.ReadKey();
                         Environment.Exit(-19);
                     }
-                    
-                    if (!ping.ConnectAsync(_ataIp, 80).Wait(100))
+
+                    try
+                    {
+                        new TcpClient().ConnectAsync(_ataIp, 80);
+                        break;
+                    }
+                    catch (SocketException)
+                    {
                         Thread.Sleep(5000);
-                    else break;
+                    }
                 }
 
                 if (!IsUpToDate(true))
@@ -468,8 +475,8 @@ namespace GrandstreamATAConfigurator
 
                 client.Dispose();
 
-                Console.WriteLine("Have a nice day!");
                 Console.WriteLine();
+                Console.WriteLine("Have a nice day!");
                 for (var i = 0; i < 3; i++)
                 {
                     Console.Write(".");
@@ -537,7 +544,28 @@ namespace GrandstreamATAConfigurator
             }
 
             using var client = new SshClient(_ataIp, Username, _password);
-            client.Connect();
+
+            for (var i = 0; i < 60; i++)
+            {
+                if (i == 59)
+                {
+                    Console.WriteLine("Could not reconnect to the ATA. " +
+                                      "Please ensure it is online, then re-run the program.");
+                    Console.ReadKey();
+                    Environment.Exit(-19);
+                }
+
+                try
+                {
+                    client.Connect();
+                    break;
+                }
+                catch (SocketException)
+                {
+                    Thread.Sleep(5000);
+                }
+            }
+
             using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
             // request status to get ATA version
