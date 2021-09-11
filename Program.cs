@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Threading;
 using Renci.SshNet;
 using Renci.SshNet.Common;
@@ -113,30 +114,33 @@ namespace GrandstreamATAConfigurator
 
                 // give the ATA a moment to catch up
                 Thread.Sleep(200);
-                
+
                 // disconnect while updating
                 sshStream.Close();
                 client.Disconnect();
-                
+
                 // start HTTP server for firmware hosting
                 Server.StartServer(_serverIp);
-                
-                // server has now been closed, however we need to give the ATA a moment in case
-                // upgrade did not complete. Pings will respond but SSH will be nonfunctional
-                // Thread.Sleep(5000);
-                
+
+                // server has now been closed, however we need to give the ATA a moment
+                // before it begins its reboot
+                Thread.Sleep(10000);
+
+                using var ping = new TcpClient();
                 // ping ATA until we receive a response
                 for (var i = 0; i < 60; i++)
                 {
-                    try
+                    if (i == 59)
                     {
-                        client.Connect();
-                        break;
+                        Console.WriteLine("Could not reconnect to the ATA. " +
+                                          "Please ensure it is online, then re-run the program.");
+                        Console.ReadKey();
+                        Environment.Exit(-19);
                     }
-                    catch (Exception)
-                    {
+                    
+                    if (!ping.ConnectAsync(Ip, 80).Wait(100))
                         Thread.Sleep(5000);
-                    }
+                    else break;
                 }
 
                 if (!IsUpToDate(true))
