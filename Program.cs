@@ -209,7 +209,7 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine();
                 Console.WriteLine("Press any key to close.");
                 Console.ReadKey();
-                Environment.Exit(0);
+                Environment.Exit(2);
             }
 
             Console.WriteLine("OK!");
@@ -385,14 +385,14 @@ namespace GrandstreamATAConfigurator
                         Console.WriteLine("Something's gone wrong, and the login credentials have changed.");
                         Console.WriteLine("Please restart or hardware factory reset your ATA, then try again.");
                         Console.ReadKey();
-                        Environment.Exit(-12);
+                        Environment.Exit(-3);
                     }
                     catch
                     {
                         Console.WriteLine("We weren't able to reconnect to the ATA.");
                         Console.WriteLine("Please restart or hardware factory reset your ATA, then try again.");
                         Console.ReadKey();
-                        Environment.Exit(-13);
+                        Environment.Exit(-4);
                     }
                 }
 
