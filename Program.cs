@@ -52,13 +52,11 @@ namespace GrandstreamATAConfigurator
             _interfaceToUse = NetworkUtils.GetInterface();
 
             // location of web server, should we need to upgrade firmware
-            _serverIp = NetworkUtils.GetLocalIPv4(_interfaceToUse.NetworkInterfaceType) + ":" + port;
+            _serverIp = NetworkUtils.GetLocalIPv4(_interfaceToUse) + ":" + port;
 
             // this variable gets mutated later to represent the ATA IP
             // we declare it here to get the proper subnet
-            Ip = NetworkUtils.GetLocalIPv4(_interfaceToUse.NetworkInterfaceType);
-            
-            Server.StartServer(Ip);
+            Ip = NetworkUtils.GetLocalIPv4(_interfaceToUse);
 
             Console.WriteLine();
             Console.WriteLine("Now scanning your network for a Grandstream device...");
