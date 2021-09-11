@@ -168,7 +168,7 @@ namespace GrandstreamATAConfigurator
             var client = new SshClient(Ip, Username, _password); // init SshClient
 
             Console.WriteLine("Attempting connection...");
-            
+
             // just try connecting using default credentials, if they work awesome, if not prompt
             try
             {
@@ -198,7 +198,7 @@ namespace GrandstreamATAConfigurator
                 }
 
                 // if we got here, the password attempts failed three times
-                
+
                 Console.WriteLine();
                 Console.WriteLine("======================================================");
                 Console.WriteLine("Looks like the password check failed three times.");
@@ -228,10 +228,10 @@ namespace GrandstreamATAConfigurator
                 Console.Clear();
                 Console.WriteLine("We're now going to get some info from you.");
                 Console.WriteLine();
-                
+
                 // due to phone number verification being a little more complex, it splits off here
                 VerifyPhone();
-                
+
                 Console.WriteLine();
                 Console.Write("And what's your SIP password? If you don't know this, contact your provider: ");
                 _authenticatePassword = Console.ReadLine();
@@ -436,7 +436,7 @@ namespace GrandstreamATAConfigurator
                 client = new SshClient(Ip, Username, _adminPassword);
 
                 Thread.Sleep(30000);
-                
+
                 // continually ping ATA until it comes online
                 for (var i = 0; i < 60; i++)
                 {
@@ -544,7 +544,7 @@ namespace GrandstreamATAConfigurator
             sshStream.WriteLine("status");
             // go through each line
             string line;
-            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
+            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000))) != null)
             {
                 if (line.ToLower().Contains("program --"))
                 {
@@ -558,7 +558,7 @@ namespace GrandstreamATAConfigurator
                         // we ! this because UpToDate() returns false if we need to upgrade
                         return !GetUserBool("ATA is out of date! Shall we upgrade?");
                     }
-                    
+
                     if (_currentVersionNumber <= foundVersionNumber)
                     {
                         return true;
