@@ -96,7 +96,11 @@ namespace GrandstreamATAConfigurator
                     "y"
                 };
 
-                Console.WriteLine("ATA is out of date! Running upgrade...");
+                Console.Clear();
+                const string updatingMessage = "The ATA will now upgrade its firmware. Do NOT touch anything!";
+                Console.WriteLine(new string('=', updatingMessage.Length));
+                Console.WriteLine(updatingMessage);
+                Console.WriteLine(new string('=', updatingMessage.Length));
                 foreach (var command in commands)
                 {
                     sshStream.WriteLine(command); // write the command to the stream
