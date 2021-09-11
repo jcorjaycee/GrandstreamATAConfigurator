@@ -11,7 +11,7 @@ namespace GrandstreamATAConfigurator
 {
     public static class Server
     {
-        public static IWebHost Builder;
+        internal static IWebHost Builder;
         
         public static void StartServer(string ip)
         {
@@ -44,27 +44,34 @@ namespace GrandstreamATAConfigurator
 
     public class Startup
     {
-        private static readonly Timer ServerTimer = new(120000);
+        // timer is set to 45s by default
+        // max amount of time for an update part to push in my testing was 40s
+        // if updates significantly grow in size, this may need to be increased
+        private static readonly Timer ServerTimer = new(45000);
         
         public void Configure(IApplicationBuilder app)
         {
-            
             ServerTimer.Elapsed += ServerTimerOnElapsed;
             ServerTimer.Start();
+
+            var stage = 0;
             
-            app.UseStaticFiles();
-            
-            app.Run( async _ =>
+            app.Use(async (_, next) =>
             {
-                ServerTimer.Interval = ServerTimer.Interval; // restart timer
-                Console.WriteLine("Request!");
+                Console.WriteLine("Update stage " + stage++ + "...");
+                ServerTimer.Stop();
+                ServerTimer.Start();
+
+                // Call the next delegate/middleware in the pipeline
+                await next();
             });
+
+            app.UseStaticFiles();
         }
         
         
         private static void ServerTimerOnElapsed(object sender, ElapsedEventArgs e)
         {
-            Console.WriteLine("Shutting down server...");
             Server.Builder.StopAsync();
             ServerTimer.Dispose();
         }
