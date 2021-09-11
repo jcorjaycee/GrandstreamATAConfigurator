@@ -16,7 +16,7 @@ namespace GrandstreamATAConfigurator
             80,
             443
         };
-        
+
         // used to validate if we're using the right interface
 
         private static readonly int[] Gateways = new[]
@@ -99,7 +99,7 @@ namespace GrandstreamATAConfigurator
             Environment.Exit(-1);
             throw new InvalidOperationException();
         }
-        
+
         private static bool IsGrandstream(string mac)
         {
             // should you wish to add more ATAs, add their MAC regex here and change the return type to int
@@ -107,7 +107,7 @@ namespace GrandstreamATAConfigurator
             const string pattern = "^([Cc][0][-:][7][4][-:][Aa][Dd][:-])([0-9A-Fa-f]{2}[:-]){2}([0-9A-Fa-f]{2})$";
             return Regex.IsMatch(mac, pattern);
         }
-        
+
         public static bool PortScan()
         {
             // for each possible IPv4
@@ -144,20 +144,16 @@ namespace GrandstreamATAConfigurator
             return false;
         }
 
-        // CREDIT FOR THIS GOES TO compman2408 ON StackOverflow
+        // PARTIAL CREDIT FOR THIS GOES TO compman2408 ON StackOverflow
         // https://stackoverflow.com/a/24814027
-        public static string GetLocalIPv4(NetworkInterfaceType type)
+        public static string GetLocalIPv4(NetworkInterface @interface)
         {
             var output = "";
-            foreach (var item in NetworkInterface.GetAllNetworkInterfaces())
+            foreach (var ip in @interface.GetIPProperties().UnicastAddresses)
             {
-                if (item.NetworkInterfaceType != type || item.OperationalStatus != OperationalStatus.Up) continue;
-                foreach (var ip in item.GetIPProperties().UnicastAddresses)
+                if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                 {
-                    if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
-                    {
-                        output = ip.Address.ToString();
-                    }
+                    output = ip.Address.ToString();
                 }
             }
 
