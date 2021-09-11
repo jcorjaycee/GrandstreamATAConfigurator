@@ -11,7 +11,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="SSH.NET" Version="2020.0.1" />
+        <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.2.7" />
+        <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
+        <PackageReference Include="SSH.NET" Version="2020.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="assets\**\*.*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>
