@@ -20,6 +20,7 @@ namespace GrandstreamATAConfigurator
 
         // for firmware upgrades
         private static Version _currentVersionNumber;
+        private static Version _foundVersionNumber;
         private static string _serverIp;
 
         // global flag for factory resetting ATA
@@ -159,6 +160,8 @@ namespace GrandstreamATAConfigurator
                     Console.ReadKey();
                     Environment.Exit(-11);
                 }
+
+                _currentVersionNumber = _foundVersionNumber;
             }
 
             // gather user data for configuration
@@ -260,6 +263,12 @@ namespace GrandstreamATAConfigurator
                 {
                     Console.WriteLine();
                     Console.Write("What should the new ATA password be? ");
+                    if (_currentVersionNumber >= new Version("1.0.29.0"))
+                        // this password requirement is new as of this update
+                        // this may break the passwords that companies were previously using!
+                        Console.WriteLine("Password rules: 8-30 characters, " +
+                                          "at least one number, uppercase, lowercase, and special character needed. " +
+                                          "Enter: ");
                     _adminPassword = Console.ReadLine();
                     if (_adminPassword == string.Empty)
                         Console.WriteLine("ATA password cannot be empty...");
@@ -439,23 +448,24 @@ namespace GrandstreamATAConfigurator
                 sshStream.Close();
                 client.Disconnect();
 
-                // password may have changed, redeclare client
-                client = new SshClient(_ataIp, Username, _adminPassword);
-
-                Thread.Sleep(30000);
-
                 // continually ping ATA until it comes online
                 for (var i = 0; i < 60; i++)
                 {
                     try
                     {
+                        // alternate between current creds and default creds
+                        // ATA may have factory reset to default creds while running through this function
+                        client = i % 2 == 0 
+                            ? new SshClient(_ataIp, Username, _adminPassword) 
+                            : new SshClient(_ataIp, "admin", "admin");
                         client.Connect();
-                        break;
                     }
                     catch (Exception)
                     {
                         Thread.Sleep(2000);
+                        continue;
                     }
+                    break;
                 }
 
                 if (!client.IsConnected)
@@ -576,18 +586,18 @@ namespace GrandstreamATAConfigurator
             {
                 if (line.ToLower().Contains("program --"))
                 {
-                    var foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
+                    _foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
                     if (skipPrompt)
-                        return _currentVersionNumber == foundVersionNumber;
-                    Console.WriteLine("Found program version: " + foundVersionNumber);
+                        return _currentVersionNumber == _foundVersionNumber;
+                    Console.WriteLine("Found program version: " + _foundVersionNumber);
                     Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
-                    if (_currentVersionNumber > foundVersionNumber)
+                    if (_currentVersionNumber > _foundVersionNumber)
                     {
                         // we ! this because UpToDate() returns false if we need to upgrade
                         return !GetUserBool("ATA is out of date! Shall we upgrade?");
                     }
 
-                    if (_currentVersionNumber <= foundVersionNumber)
+                    if (_currentVersionNumber <= _foundVersionNumber)
                     {
                         return true;
                     }
