@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Renci.SshNet;
 using Renci.SshNet.Common;
@@ -272,8 +273,16 @@ namespace GrandstreamATAConfigurator
                     _adminPassword = Console.ReadLine();
                     if (_adminPassword == string.Empty)
                         Console.WriteLine("ATA password cannot be empty...");
-                    else
-                        break;
+                    else if (_currentVersionNumber >= new Version("1.0.29.0"))
+                    {
+                        // huge credits to Srinivas on StackOverflow for this monster of a regex
+                        // https://stackoverflow.com/a/21456918
+                        if (!Regex.IsMatch(_currentVersionNumber.ToString(),
+                            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,30}$"))
+                            Console.WriteLine("Password must be 8-30 character and have at least one number, " +
+                                              "uppercase letter, lowercase letter, and special character.");
+                    }
+                    else break;
                 }
 
                 Console.Clear();
