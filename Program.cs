@@ -282,8 +282,8 @@ namespace GrandstreamATAConfigurator
                     
                     if (_currentVersionNumber >= new Version("1.0.29.0"))
                     {
-                        // credits to Emerson Joel Rojas Soliz on StackOverflow for this regex
-                        // https://stackoverflow.com/a/59164539
+                        // credits to Dana on StackOverflow for this regex
+                        // https://stackoverflow.com/a/62624132
                         if (!Regex.IsMatch(_adminPassword,
                             "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])([a-zA-Z0-9@$!%*?&]{8,30})$"))
                         {
