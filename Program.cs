@@ -128,7 +128,7 @@ namespace GrandstreamATAConfigurator
 
                 // server has now been closed, however we need to give the ATA a moment
                 // before it begins its reboot
-                Thread.Sleep(10000);
+                Thread.Sleep(20000);
 
                 // ping ATA until we receive a response
                 for (var i = 0; i < 60; i++)
@@ -260,18 +260,20 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine();
                 Console.Write("Your failover server? (Optional): ");
                 _failoverServer = Console.ReadLine();
+
+                Console.WriteLine("What should the new ATA password be?");
+
+                if (_currentVersionNumber >= new Version("1.0.29.0"))
+                {
+                    // this password requirement is new as of this update
+                    // this may break the passwords that companies were previously using!
+                    Console.WriteLine("Password rules: 8-30 characters, " +
+                                      "at least one number, uppercase, lowercase, and special character needed.");
+                }
+
                 while (true)
                 {
-                    Console.WriteLine();
-                    Console.Write("What should the new ATA password be? ");
-                    if (_currentVersionNumber >= new Version("1.0.29.0"))
-                    {
-                        // this password requirement is new as of this update
-                        // this may break the passwords that companies were previously using!
-                        Console.WriteLine("Password rules: 8-30 characters, " +
-                                          "at least one number, uppercase, lowercase, and special character needed.");
-                        Console.Write("Enter new password: ");
-                    }
+                    Console.Write("Enter new password: ");
 
                     _adminPassword = Console.ReadLine();
                     if (string.IsNullOrEmpty(_adminPassword))
@@ -279,7 +281,7 @@ namespace GrandstreamATAConfigurator
                         Console.WriteLine("ATA password cannot be empty...");
                         continue;
                     }
-                    
+
                     if (_currentVersionNumber >= new Version("1.0.29.0"))
                     {
                         // credits to Dana on StackOverflow for this regex
@@ -292,7 +294,7 @@ namespace GrandstreamATAConfigurator
                             continue;
                         }
                     }
-                    
+
                     break;
                 }
 
@@ -431,7 +433,7 @@ namespace GrandstreamATAConfigurator
                         Environment.Exit(-4);
                     }
                 }
-              
+
                 using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
                 var index = 0;
@@ -475,8 +477,8 @@ namespace GrandstreamATAConfigurator
                     {
                         // alternate between current creds and default creds
                         // ATA may have factory reset to default creds while running through this function
-                        client = i % 2 == 0 
-                            ? new SshClient(_ataIp, Username, _adminPassword) 
+                        client = i % 2 == 0
+                            ? new SshClient(_ataIp, Username, _adminPassword)
                             : new SshClient(_ataIp, "admin", "admin");
                         client.Connect();
                     }
@@ -485,6 +487,7 @@ namespace GrandstreamATAConfigurator
                         Thread.Sleep(2000);
                         continue;
                     }
+
                     break;
                 }
 
