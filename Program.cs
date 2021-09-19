@@ -265,24 +265,35 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine();
                     Console.Write("What should the new ATA password be? ");
                     if (_currentVersionNumber >= new Version("1.0.29.0"))
+                    {
                         // this password requirement is new as of this update
                         // this may break the passwords that companies were previously using!
                         Console.WriteLine("Password rules: 8-30 characters, " +
-                                          "at least one number, uppercase, lowercase, and special character needed. " +
-                                          "Enter: ");
+                                          "at least one number, uppercase, lowercase, and special character needed.");
+                        Console.Write("Enter new password: ");
+                    }
+
                     _adminPassword = Console.ReadLine();
-                    if (_adminPassword == string.Empty)
-                        Console.WriteLine("ATA password cannot be empty...");
-                    else if (_currentVersionNumber >= new Version("1.0.29.0"))
+                    if (string.IsNullOrEmpty(_adminPassword))
                     {
-                        // huge credits to Srinivas on StackOverflow for this monster of a regex
-                        // https://stackoverflow.com/a/21456918
-                        if (!Regex.IsMatch(_currentVersionNumber.ToString(),
-                            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,30}$"))
+                        Console.WriteLine("ATA password cannot be empty...");
+                        continue;
+                    }
+                    
+                    if (_currentVersionNumber >= new Version("1.0.29.0"))
+                    {
+                        // credits to Emerson Joel Rojas Soliz on StackOverflow for this regex
+                        // https://stackoverflow.com/a/59164539
+                        if (!Regex.IsMatch(_adminPassword,
+                            "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])([a-zA-Z0-9@$!%*?&]{8,30})$"))
+                        {
                             Console.WriteLine("Password must be 8-30 character and have at least one number, " +
                                               "uppercase letter, lowercase letter, and special character.");
+                            continue;
+                        }
                     }
-                    else break;
+                    
+                    break;
                 }
 
                 Console.Clear();
