@@ -30,11 +30,11 @@ namespace GrandstreamATAConfigurator
         // Grandstream config variables
         private static string _adminPassword = "admin";
         private static string _authenticatePassword = "";
-        private static string _failoverServer = "";
+        private static string _failoverServer = "voip2.start.ca:6060";
         private const int NoKeyTimeout = 4;
         private static string _password = "admin";
         private static string _phoneNumber;
-        private static string _primaryServer = "";
+        private static string _primaryServer = "voip.start.ca";
         private const string TimeZone = "EST5EDT";
         private const string Username = "admin";
 
@@ -46,7 +46,7 @@ namespace GrandstreamATAConfigurator
         {
             // print title card
             Console.Clear();
-            const string title = "Grandstream SSH Setup";
+            const string title = "Start.ca Grandstream Setup";
             Console.WriteLine(new string('=', title.Length));
             Console.WriteLine(title);
             Console.WriteLine(new string('=', title.Length));
@@ -63,13 +63,13 @@ namespace GrandstreamATAConfigurator
             _ataIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
 
             Console.WriteLine();
-            Console.WriteLine("Now scanning your network for a Grandstream device... Please wait.");
+            Console.WriteLine("Now scanning the network for a Grandstream device... Please wait.");
             if (NetworkUtils.PortScan(_ataIp, out _ataIp)) // we found something!
                 Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
             else // no devices found...
             {
                 Console.Write("Oops, we can't find a Grandstream device on this network. Make " +
-                              "sure you're connected to the right network, then try again.");
+                              "sure the computer is connected to the right network, then try again.");
                 Console.ReadKey();
                 return;
             }
@@ -213,8 +213,8 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine();
                 Console.WriteLine("======================================================");
                 Console.WriteLine("Looks like the password check failed three times.");
-                Console.WriteLine("Best thing to do from here is factory reset your ATA.");
-                Console.WriteLine("Using a pin, paperclip, etc. press and hold the reset button on your ATA");
+                Console.WriteLine("Best thing to do from here is factory reset the ATA.");
+                Console.WriteLine("Using a pin, paperclip, etc. press and hold the reset button on the ATA");
                 Console.WriteLine("until the lights turn off. Once the globe light turns on, try again.");
                 Console.WriteLine("======================================================");
                 Console.WriteLine();
@@ -237,38 +237,54 @@ namespace GrandstreamATAConfigurator
             while (!done)
             {
                 Console.Clear();
-                Console.WriteLine("We're now going to get some info from you.");
+                Console.WriteLine("Now collecting configuration info.");
                 Console.WriteLine();
 
                 // due to phone number verification being a little more complex, it splits off here
                 VerifyPhone();
 
                 Console.WriteLine();
-                Console.Write("And what's your SIP password? If you don't know this, contact your provider: ");
+                Console.Write("What is the SIP password? This can be found under Change Service: ");
                 _authenticatePassword = Console.ReadLine();
-                while (true)
+
+                while (!done)
                 {
                     Console.WriteLine();
-                    Console.Write("Your primary server? ");
-                    _primaryServer = Console.ReadLine();
-                    if (_primaryServer == string.Empty)
-                        Console.WriteLine("Primary server cannot be empty...");
-                    else
-                        break;
+                    Console.Write("Select server configuration - default (1 or Enter) or voip2 (2): ");
+
+                    var voipSeverConfig = Console.ReadKey().Key;
+                    // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+                    switch (voipSeverConfig)
+                    {
+                        case ConsoleKey.Enter:
+                        case ConsoleKey.D1:
+                        case ConsoleKey.NumPad1:
+                            done = true;
+                            break;
+                        case ConsoleKey.D2:
+                        case ConsoleKey.NumPad2:
+                            var temp = _failoverServer;
+                            _failoverServer = _primaryServer;
+                            _primaryServer = temp;
+                            done = true;
+                            break;
+                        default:
+                            Console.WriteLine("Sorry, that wasn't a valid input.");
+                            break;
+                    }
                 }
-
-                Console.WriteLine();
-                Console.Write("Your failover server? (Optional): ");
-                _failoverServer = Console.ReadLine();
-
-                Console.WriteLine("What should the new ATA password be?");
 
                 if (_currentVersionNumber >= new Version("1.0.29.0"))
                 {
                     // this password requirement is new as of this update
                     // this may break the passwords that companies were previously using!
+                    Console.WriteLine("What should the new ATA password be?");
                     Console.WriteLine("Password rules: 8-30 characters, " +
                                       "at least one number, uppercase, lowercase, and special character needed.");
+                }
+                else
+                {
+                    Console.WriteLine("Please enter the customer number to serve as the new ATA password: ");
                 }
 
                 while (true)
@@ -298,18 +314,17 @@ namespace GrandstreamATAConfigurator
                     break;
                 }
 
-                Console.Clear();
+                Console.WriteLine();
 
                 _reset = GetUserBool("Are we resetting the ATA first?");
 
                 Console.Clear();
-                Console.WriteLine("Current password: " + _password);
-                Console.WriteLine("New password: " + _adminPassword);
+                Console.WriteLine("Current ATA password: " + _password);
+                Console.WriteLine("New ATA password: " + _adminPassword);
                 Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
                 Console.WriteLine("SIP password: " + _authenticatePassword);
-                Console.WriteLine("Primary server: " + _primaryServer);
-                Console.WriteLine("Failover server: " + _failoverServer);
-                Console.WriteLine("Resetting the ATA first: " + _reset);
+                Console.WriteLine("Server configuration: " + (_primaryServer == "voip.start.ca" ? "default" : "voip2"));
+                Console.WriteLine("Resetting the ATA first: " + (_reset ? "yes" : "no"));
                 Console.WriteLine();
 
                 done = GetUserBool("Is all of the above correct?");
@@ -320,7 +335,7 @@ namespace GrandstreamATAConfigurator
         {
             while (true)
             {
-                Console.Write("What's the phone number you wish to assign to this adapter? ");
+                Console.Write("What's the phone number to assign to this adapter? ");
                 _phoneNumber = Console.ReadLine();
                 _phoneNumber = new string(
                     (_phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray()); // strips any non-numeric characters
@@ -421,14 +436,14 @@ namespace GrandstreamATAConfigurator
                     catch (SshAuthenticationException)
                     {
                         Console.WriteLine("Something's gone wrong, and the login credentials have changed.");
-                        Console.WriteLine("Please restart or hardware factory reset your ATA, then try again.");
+                        Console.WriteLine("Please restart or hardware factory reset the ATA, then try again.");
                         Console.ReadKey();
                         Environment.Exit(-3);
                     }
                     catch
                     {
                         Console.WriteLine("We weren't able to reconnect to the ATA.");
-                        Console.WriteLine("Please restart or hardware factory reset your ATA, then try again.");
+                        Console.WriteLine("Please restart or hardware factory reset the ATA, then try again.");
                         Console.ReadKey();
                         Environment.Exit(-4);
                     }
