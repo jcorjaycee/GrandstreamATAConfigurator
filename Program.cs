@@ -273,6 +273,9 @@ namespace GrandstreamATAConfigurator
                             break;
                     }
                 }
+                
+                Console.WriteLine();
+                Console.WriteLine();
 
                 if (_currentVersionNumber >= new Version("1.0.29.0"))
                 {
