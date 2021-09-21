@@ -646,6 +646,19 @@ namespace GrandstreamATAConfigurator
             using var client = new SshClient(_ataIp, Username, _password);
             client.Connect();
             using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
+            // request status to get ATA version
+            sshStream.WriteLine("status");
+            // go through each line
+            string line;
+            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000))) != null)
+            {
+                if (line.ToLower().Contains("model:"))
+                {
+                    _modelNumber = line[19..].ToLower(); // model string starts 19 characters in
+                }
+            }
+            Console.WriteLine("Model " + _modelNumber);
+        }
 
             var line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000));
             _modelNumber = line[15..].ToLower();
