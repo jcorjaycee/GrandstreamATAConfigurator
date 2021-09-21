@@ -17,18 +17,6 @@ namespace GrandstreamATAConfigurator
             443
         };
 
-        // used to validate if we're using the right interface
-
-        private static readonly int[] Gateways = new[]
-        {
-            0,
-            1,
-            2,
-            3,
-            50,
-            254
-        };
-
         // interface scanning
 
         /* UP FRONT - I'd like to disclaim that this is probably not the best way to do this!
@@ -41,8 +29,8 @@ namespace GrandstreamATAConfigurator
         public static NetworkInterface GetInterface()
         {
             var client = new TcpClient();
-
             var bytes = Array.Empty<byte>();
+            var gateway = string.Empty;
 
             // for every interface on the computer
             foreach (var iInterface in NetworkInterface.GetAllNetworkInterfaces())
@@ -66,31 +54,30 @@ namespace GrandstreamATAConfigurator
                     break;
                 }
 
-                // did we get an IP?
-                if (bytes == Array.Empty<byte>())
-                    continue;
-
-                // for each gateway IP we've defined
-                foreach (var gateway in Gateways)
+                foreach (var iGateway in iInterface.GetIPProperties().GatewayAddresses)
                 {
-                    bytes[3] = (byte)gateway;
-                    IPAddress newIp = new(bytes);
                     try
                     {
-                        // if we can't connect, move onto the next gateway
-                        if (!client.ConnectAsync(newIp, 80).Wait(20)) continue;
+                        if (!client.ConnectAsync(iGateway.Address, 80).Wait(20)) continue;
                     }
                     catch (Exception)
                     {
-                        // ignored
+                        continue;
                     }
+                    
+                    gateway = iGateway.Address.ToString();
+                    break;
+                }
 
+                // did we get an IP?
+                if (bytes == Array.Empty<byte>() || string.IsNullOrWhiteSpace(gateway))
+                    continue;
+                
                     // if we got here, we found it!
                     Console.WriteLine();
                     Console.WriteLine("Found interface: " + iInterface.Name);
                     if (!Program.GetUserBool("Is this the correct interface?")) break;
                     return iInterface;
-                }
             }
 
             Console.WriteLine();
