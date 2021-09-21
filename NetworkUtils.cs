@@ -94,7 +94,7 @@ namespace GrandstreamATAConfigurator
             }
 
             Console.WriteLine();
-            Console.Write("Hmm... looks like we can't find any interfaces that will work for this...");
+            Console.WriteLine("Hmm... looks like we can't find any interfaces that will work for this...");
             Console.ReadKey();
             Environment.Exit(-1);
             throw new InvalidOperationException();

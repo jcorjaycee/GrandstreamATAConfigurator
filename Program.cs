@@ -68,7 +68,7 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
             else // no devices found...
             {
-                Console.Write("Oops, we can't find a Grandstream device on this network. Make " +
+                Console.WriteLine("Oops, we can't find a Grandstream device on this network. Make " +
                               "sure you're connected to the right network, then try again.");
                 Console.ReadKey();
                 return;
