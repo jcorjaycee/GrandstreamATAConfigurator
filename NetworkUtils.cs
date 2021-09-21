@@ -123,7 +123,14 @@ namespace GrandstreamATAConfigurator
                     try
                     {
                         // if we can't connect to the IP in question, move on
-                        if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
+                        try
+                        {
+                            if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
+                        }
+                        catch (Exception)
+                        {
+                            continue;
+                        }
                         // found a device that responds to one of the ports!
                         var macAddress = GetMacByIp(newIpBuilder.ToString());
                         // uncomment the below line to output each IP found to the console
