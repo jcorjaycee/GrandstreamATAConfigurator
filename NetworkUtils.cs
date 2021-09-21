@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace GrandstreamATAConfigurator
@@ -197,10 +198,12 @@ namespace GrandstreamATAConfigurator
                     CreateNoWindow = true
                 }
             };
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                pProcess.StartInfo.Arguments += "-n ";
             pProcess.Start();
 
             var cmdOutput = pProcess.StandardOutput.ReadToEnd();
-            const string pattern = @"(?<ip>([0-9]{1,3}\.?){4})\s*(?<mac>([a-f0-9]{2}-?){6})";
+            const string pattern = @"(?<ip>([0-9]{1,3}\.?){4})(.*)(?<mac>([a-f0-9]{2}:?-?){6})";
 
             foreach (Match m in Regex.Matches(cmdOutput, pattern, RegexOptions.IgnoreCase))
             {
