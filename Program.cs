@@ -20,6 +20,7 @@ namespace GrandstreamATAConfigurator
         private const int Port = 80;
 
         // for firmware upgrades
+        private static string _modelNumber;
         private static Version _currentVersionNumber;
         private static Version _foundVersionNumber;
         private static string _serverIp;
@@ -544,9 +545,10 @@ namespace GrandstreamATAConfigurator
 
         private static bool IsUpToDate(bool skipPrompt)
         {
+            GetModelNumber();
             if (!skipPrompt)
             {
-                if (!File.Exists(Path.Join(Directory.GetCurrentDirectory(), "assets/ht801fw.bin")))
+                if (!File.Exists(Path.Join(Directory.GetCurrentDirectory(), $"assets/{_modelNumber}fw.bin")))
                 {
                     Console.WriteLine("Not seeing any update files, so not checking for an update...");
                     for (var i = 0; i < 3; i++)
@@ -561,7 +563,7 @@ namespace GrandstreamATAConfigurator
                 try
                 {
                     // try to get the version from the version file
-                    var sr = new StreamReader("assets/version");
+                    var sr = new StreamReader($"assets/version-{_modelNumber}");
                     _currentVersionNumber = new Version(sr.ReadLine() ?? throw new InvalidOperationException());
                 }
                 catch (Exception)
@@ -637,6 +639,16 @@ namespace GrandstreamATAConfigurator
             Console.ReadKey();
             Environment.Exit(-2);
             throw new InvalidOperationException();
+        }
+
+        private static void GetModelNumber()
+        {
+            using var client = new SshClient(_ataIp, Username, _password);
+            client.Connect();
+            using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
+
+            var line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000));
+            _modelNumber = line[15..].ToLower();
         }
     }
 }
