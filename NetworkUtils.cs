@@ -70,7 +70,7 @@ namespace GrandstreamATAConfigurator
                 }
 
                 // did we get an IP?
-                if (bytes == Array.Empty<byte>() || string.IsNullOrWhiteSpace(gateway))
+                if (bytes == Array.Empty<byte>() && string.IsNullOrWhiteSpace(gateway))
                     continue;
                 
                     // if we got here, we found it!
