@@ -520,6 +520,8 @@ namespace GrandstreamATAConfigurator
             }
         }
 
+        // helper functions
+        
         public static bool GetUserBool(string prompt)
         {
             while (true)

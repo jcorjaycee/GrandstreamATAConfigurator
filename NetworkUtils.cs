@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -141,10 +140,17 @@ namespace GrandstreamATAConfigurator
                         newIp = newIpBuilder.ToString();
                         return true;
                     }
-                    catch (Exception e) // probably a network error
+                    catch (Exception e) // could fail for any multitude of reasons, but is unlikely to in production
                     {
                         Console.WriteLine("Whoops, couldn't get that... " + newIpBuilder);
                         Console.WriteLine(e);
+                        string userWarning = "We hit a critical error and can't continue. " +
+                                             "Please report the above info to the developer.";
+                        Console.WriteLine();
+                        Console.WriteLine(new string('=', userWarning.Length));
+                        Console.WriteLine(userWarning);
+                        Console.WriteLine(new string('=', userWarning.Length));
+                        Console.ReadKey();
                         throw;
                     }
                 }
@@ -185,6 +191,7 @@ namespace GrandstreamATAConfigurator
             return "NOT FOUND";
         }
 
+        // GetMacIpPairs invokes arp to get the MACs and IPs on the LAN
         private static IEnumerable<MacIpPair> GetMacIpPairs()
         {
             var pProcess = new Process
@@ -198,6 +205,8 @@ namespace GrandstreamATAConfigurator
                     CreateNoWindow = true
                 }
             };
+            // if we're not on Windows, the -n switch avoids name resolution
+            // name resolution may cause false matches in our next regex
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 pProcess.StartInfo.Arguments += "-n ";
             pProcess.Start();
