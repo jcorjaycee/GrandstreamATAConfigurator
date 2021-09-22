@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace GrandstreamATAConfigurator
@@ -15,18 +15,6 @@ namespace GrandstreamATAConfigurator
         {
             80,
             443
-        };
-
-        // used to validate if we're using the right interface
-
-        private static readonly int[] Gateways = new[]
-        {
-            0,
-            1,
-            2,
-            3,
-            50,
-            254
         };
 
         // interface scanning
@@ -43,6 +31,7 @@ namespace GrandstreamATAConfigurator
             var client = new TcpClient();
 
             var bytes = Array.Empty<byte>();
+            var gateway = string.Empty;
 
             // for every interface on the computer
             foreach (var iInterface in NetworkInterface.GetAllNetworkInterfaces())
@@ -66,35 +55,35 @@ namespace GrandstreamATAConfigurator
                     break;
                 }
 
-                // did we get an IP?
-                if (bytes == Array.Empty<byte>())
-                    continue;
-
-                // for each gateway IP we've defined
-                foreach (var gateway in Gateways)
+                foreach (var iGateway in iInterface.GetIPProperties().GatewayAddresses)
                 {
-                    bytes[3] = (byte)gateway;
-                    IPAddress newIp = new(bytes);
                     try
                     {
-                        // if we can't connect, move onto the next gateway
-                        if (!client.ConnectAsync(newIp, 80).Wait(20)) continue;
+                        if (!client.ConnectAsync(iGateway.Address, 80).Wait(20)) continue;
                     }
                     catch (Exception)
                     {
-                        // ignored
+                        continue;
                     }
+                    
+                    gateway = iGateway.Address.ToString();
+                    break;
+                }
 
+                // did we get an IP?
+                if (bytes == Array.Empty<byte>() && string.IsNullOrWhiteSpace(gateway))
+                    continue;
+                
                     // if we got here, we found it!
                     Console.WriteLine();
                     Console.WriteLine("Found interface: " + iInterface.Name);
                     if (!Program.GetUserBool("Is this the correct interface?")) break;
+                    Console.WriteLine();
                     return iInterface;
-                }
             }
 
             Console.WriteLine();
-            Console.Write("Hmm... looks like we can't find any interfaces that will work for this...");
+            Console.WriteLine("Hmm... looks like we can't find any interfaces that will work for this...");
             Console.ReadKey();
             Environment.Exit(-1);
             throw new InvalidOperationException();
@@ -123,7 +112,14 @@ namespace GrandstreamATAConfigurator
                     try
                     {
                         // if we can't connect to the IP in question, move on
-                        if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
+                        try
+                        {
+                            if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
+                        }
+                        catch (Exception)
+                        {
+                            continue;
+                        }
                         // found a device that responds to one of the ports!
                         var macAddress = GetMacByIp(newIpBuilder.ToString());
                         // uncomment the below line to output each IP found to the console
@@ -133,10 +129,17 @@ namespace GrandstreamATAConfigurator
                         newIp = newIpBuilder.ToString();
                         return true;
                     }
-                    catch (Exception e) // probably a network error
+                    catch (Exception e) // could fail for any multitude of reasons, but is unlikely to in production
                     {
                         Console.WriteLine("Whoops, couldn't get that... " + newIpBuilder);
                         Console.WriteLine(e);
+                        string userWarning = "We hit a critical error and can't continue. " +
+                                             "Please report the above info to the developer.";
+                        Console.WriteLine();
+                        Console.WriteLine(new string('=', userWarning.Length));
+                        Console.WriteLine(userWarning);
+                        Console.WriteLine(new string('=', userWarning.Length));
+                        Console.ReadKey();
                         throw;
                     }
                 }
@@ -177,6 +180,7 @@ namespace GrandstreamATAConfigurator
             return "NOT FOUND";
         }
 
+        // GetMacIpPairs invokes arp to get the MACs and IPs on the LAN
         private static IEnumerable<MacIpPair> GetMacIpPairs()
         {
             var pProcess = new Process
@@ -190,10 +194,14 @@ namespace GrandstreamATAConfigurator
                     CreateNoWindow = true
                 }
             };
+            // if we're not on Windows, the -n switch avoids name resolution
+            // name resolution may cause false matches in our next regex
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                pProcess.StartInfo.Arguments += "-n ";
             pProcess.Start();
 
             var cmdOutput = pProcess.StandardOutput.ReadToEnd();
-            const string pattern = @"(?<ip>([0-9]{1,3}\.?){4})\s*(?<mac>([a-f0-9]{2}-?){6})";
+            const string pattern = @"(?<ip>([0-9]{1,3}\.?){4})(.*)(?<mac>([a-f0-9]{2}:?-?){6})";
 
             foreach (Match m in Regex.Matches(cmdOutput, pattern, RegexOptions.IgnoreCase))
             {
