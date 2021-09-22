@@ -5,6 +5,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Microsoft.AspNetCore.Connections;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 
@@ -13,6 +14,8 @@ namespace GrandstreamATAConfigurator
     internal static class Program
     {
         // BEGIN GLOBAL VARIABLES
+
+        private static Version GatasVersion = new("2.2.3.1");
 
         // for locating, connecting to ATA
         private static NetworkInterface _interfaceToUse;
@@ -25,8 +28,11 @@ namespace GrandstreamATAConfigurator
         private static Version _foundVersionNumber;
         private static string _serverIp;
 
-        // global flag for factory resetting ATA
-        private static bool _reset;
+        // global flags
+        private static bool? _reset; // reset ATA
+        private static bool? _update; // update ATA
+        private static bool _confirmEntry = true; // confirm the details input by the user
+        private static bool _skipFailover; // confirm the details input by the user
 
         // Grandstream config variables
         private static string _adminPassword = "admin";
@@ -43,8 +49,139 @@ namespace GrandstreamATAConfigurator
 
 
         // MAIN
-        private static void Main()
+        private static void Main(string[] args)
         {
+            if (args.Any(arg => arg is "-b" or "--batch"))
+            {
+                throw new NotImplementedException("Batch provisioning is not yet available.");
+            }
+
+            if (args.Any(arg => arg is "-h" or "--help"))
+            {
+                Console.WriteLine("GrandstreamATAConfigurator Help");
+                Console.WriteLine("Version " + GatasVersion);
+                Console.WriteLine();
+                Console.WriteLine("Input parameters:");
+                Console.WriteLine("{0,-35}{1,-10}", "  -ip, --ipAddress", "Specify IP address of ATA, skipping port scanning");
+                Console.WriteLine("{0,-35}{1,-10}", "  -cpw, --currentPassword", "Specify existing ATA password");
+                Console.WriteLine("{0,-35}{1,-10}", "  -p, --phoneNumber", "Specify the phone number or SIP username to provision");
+                Console.WriteLine("{0,-35}{1,-10}", "  -a, --authenticatePassword", "Specify the SIP password to provision");
+                Console.WriteLine("{0,-35}{1,-10}", "  -pw, --ataPassword ", "Specify a new ATA password to configure for SSH and HTTP access");
+                Console.WriteLine("{0,-35}{1,-10}", "  -ps, --primaryServer", "Specify the primary SIP server");
+                Console.WriteLine("{0,-35}{1,-10}", "  -fs, --failoverServer", "Specify the failover SIP server (optional)");
+                Console.WriteLine();
+                Console.WriteLine("Prompt skipping:");
+                Console.WriteLine("{0,-35}{1,-10}", "  --update, --noupdate", "Set choice for updating ATA, if an update is available");
+                Console.WriteLine("{0,-35}{1,-10}", "  --reset, --noreset", "Set choice for factory resetting ATA before config");
+                Console.WriteLine("{0,-35}{1,-10}", "  --noconfirm", "Skips prompt that has user review settings before configuring");
+                return;
+            }
+
+            var skipNext = false;
+            for (var arg = 0; arg < args.Length; arg++)
+            {
+                if (skipNext)
+                {
+                    skipNext = false;
+                    continue;
+                }
+
+                switch (args[arg].ToLower())
+                {
+                    // booleans
+                    case "--noupdate":
+                        _update = false;
+                        break;
+                    case "--update":
+                        _update = true;
+                        break;
+                    case "--noreset":
+                        _reset = false;
+                        break;
+                    case "--reset":
+                        _reset = true;
+                        break;
+                    case "--noconfirm":
+                        _confirmEntry = false;
+                        break;
+
+                    // strings
+                    case "-ip":
+                    case "--ipaddress":
+                        skipNext = true;
+                        if (!Regex.IsMatch(args[arg + 1], @"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)(\.(?!$)|$)){4}$"))
+                        {
+                            Console.WriteLine("You passed an IP address of " + args[arg + 1] + ". This is invalid.");
+                            Console.ReadKey();
+                            throw new FormatException();
+                        }
+                        else if (!new TcpClient().ConnectAsync(args[arg + 1], 80).Wait(20))
+                        {
+                            Console.WriteLine(
+                                "Couldn't connect to the IP you specified on port 80. Please check and try again.");
+                            Console.ReadKey();
+                            throw new ConnectionAbortedException();
+                        }
+
+                        _ataIp = args[arg + 1];
+                        break;
+                    case "-cpw":
+                    case "--currentPassword":
+                        skipNext = true;
+                        _password = args[arg + 1];
+                        break;
+                    case "-p":
+                    case "--phoneNumber":
+                        skipNext = true;
+                        _phoneNumber = args[arg + 1];
+                        if (!ValidatePhone())
+                        {
+                            Console.WriteLine(
+                                "You passed an invalid phone number. Please try again. Press any key to close.");
+                            Console.ReadKey();
+                            Environment.Exit(3);
+                        }
+
+                        break;
+                    case "-a":
+                    case "--authenticatePassword":
+                        skipNext = true;
+                        _authenticatePassword = args[arg + 1];
+                        break;
+                    case "-pw":
+                    case "--ataPassword":
+                        skipNext = true;
+                        _adminPassword = args[arg + 1];
+                        if (!ValidatePassword())
+                        {
+                            Console.WriteLine("Password must be 8-30 character and have at least one number, " +
+                                              "uppercase letter, lowercase letter, and special character.");
+                            Console.ReadKey();
+                            Environment.Exit(4);
+                        }
+
+                        break;
+                    case "-ps":
+                    case "--primaryServer":
+                        skipNext = true;
+                        _skipFailover = true;
+                        _primaryServer = args[arg + 1];
+                        break;
+                    case "-fs":
+                    case "--failoverServer":
+                        skipNext = true;
+                        _skipFailover = true;
+                        _failoverServer = args[arg + 1];
+                        break;
+                    default:
+                        if (!skipNext) throw new ArgumentException("An invalid argument was received: " + args[arg]);
+
+                        skipNext = false;
+                        break;
+                }
+            }
+
+
             // print title card
             Console.Clear();
             const string title = "Grandstream SSH Setup";
@@ -61,18 +198,21 @@ namespace GrandstreamATAConfigurator
 
             // this variable gets mutated later to represent the ATA IP
             // we declare it here to get the proper subnet
-            _ataIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
-
-            Console.WriteLine();
-            Console.WriteLine("Now scanning your network for a Grandstream device... Please wait.");
-            if (NetworkUtils.PortScan(_ataIp, out _ataIp)) // we found something!
-                Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
-            else // no devices found...
+            if (string.IsNullOrWhiteSpace(_ataIp))
             {
-                Console.WriteLine("Oops, we can't find a Grandstream device on this network. Make " +
-                              "sure you're connected to the right network, then try again.");
-                Console.ReadKey();
-                return;
+                _ataIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
+
+                Console.WriteLine();
+                Console.WriteLine("Now scanning your network for a Grandstream device... Please wait.");
+                if (NetworkUtils.PortScan(_ataIp, out _ataIp)) // we found something!
+                    Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
+                else // no devices found...
+                {
+                    Console.WriteLine("Oops, we can't find a Grandstream device on this network. Make " +
+                                      "sure you're connected to the right network, then try again.");
+                    Console.ReadKey();
+                    return;
+                }
             }
 
             AttemptConnect(); // try connecting to the ATA, prompt for credentials if needed
@@ -170,14 +310,36 @@ namespace GrandstreamATAConfigurator
             GetParams();
 
             // take action to reset or configure ATA
-            ResetOrConfigureAta(_reset);
+            if (_reset is true)
+                ResetOrConfigureAta(true);
+            ResetOrConfigureAta(false);
         }
 
         // extensions of main (for readability)
 
         private static void AttemptConnect()
         {
-            var client = new SshClient(_ataIp, Username, _password); // init SshClient
+            SshClient client;
+
+            if (_password != "admin")
+            {
+                client = new SshClient(_ataIp, Username, _password);
+                try
+                {
+                    client.Connect();
+                    client.Disconnect();
+                    return;
+                }
+                catch (SshAuthenticationException)
+                {
+                    Console.WriteLine("Connection attempt using the password provided failed. Press any key to close.");
+                    Console.ReadKey();
+                    Environment.Exit(5);
+                }
+            }
+
+            client = new SshClient(_ataIp, "admin", "admin"); // init SshClient
+
 
             Console.WriteLine("Attempting connection...");
 
@@ -241,13 +403,23 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("We're now going to get some info from you.");
                 Console.WriteLine();
 
-                // due to phone number verification being a little more complex, it splits off here
-                VerifyPhone();
+                while (string.IsNullOrWhiteSpace(_phoneNumber))
+                {
+                    Console.Write("What's the phone number you wish to assign to this adapter? ");
+                    _phoneNumber = Console.ReadLine();
+                    Console.WriteLine();
+                    if (ValidatePhone()) continue;
+                    Console.WriteLine("Sorry, that's not a valid phone number.");
+                    _phoneNumber = null;
+                }
 
-                Console.WriteLine();
-                Console.Write("And what's your SIP password? If you don't know this, contact your provider: ");
-                _authenticatePassword = Console.ReadLine();
-                while (true)
+                if (string.IsNullOrWhiteSpace(_authenticatePassword))
+                {
+                    Console.Write("What's your SIP password? If you don't know this, contact your provider: ");
+                    _authenticatePassword = Console.ReadLine();
+                }
+
+                while (string.IsNullOrWhiteSpace(_primaryServer))
                 {
                     Console.WriteLine();
                     Console.Write("Your primary server? ");
@@ -258,78 +430,66 @@ namespace GrandstreamATAConfigurator
                         break;
                 }
 
-                Console.WriteLine();
-                Console.Write("Your failover server? (Optional): ");
-                _failoverServer = Console.ReadLine();
-
-                Console.WriteLine("What should the new ATA password be?");
-
-                if (_currentVersionNumber >= new Version("1.0.29.0"))
+                if (!_skipFailover)
                 {
-                    // this password requirement is new as of this update
-                    // this may break the passwords that companies were previously using!
-                    Console.WriteLine("Password rules: 8-30 characters, " +
-                                      "at least one number, uppercase, lowercase, and special character needed.");
+                    Console.WriteLine();
+                    Console.Write("Your failover server? (Optional): ");
+                    _failoverServer = Console.ReadLine();
                 }
 
-                while (true)
+                if (string.IsNullOrWhiteSpace(_adminPassword))
                 {
-                    Console.Write("Enter new password: ");
-
-                    _adminPassword = Console.ReadLine();
-                    if (string.IsNullOrEmpty(_adminPassword))
-                    {
-                        Console.WriteLine("ATA password cannot be empty...");
-                        continue;
-                    }
+                    Console.WriteLine("What should the new ATA password be?");
 
                     if (_currentVersionNumber >= new Version("1.0.29.0"))
                     {
-                        // credits to Dana on StackOverflow for this regex
-                        // https://stackoverflow.com/a/62624132
-                        if (!Regex.IsMatch(_adminPassword,
-                            "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])([a-zA-Z0-9@$!%*?&]{8,30})$"))
-                        {
-                            Console.WriteLine("Password must be 8-30 character and have at least one number, " +
-                                              "uppercase letter, lowercase letter, and special character.");
-                            continue;
-                        }
+                        // this password requirement is new as of this update
+                        // this may break the passwords that companies were previously using!
+                        Console.WriteLine("Password rules: 8-30 characters, " +
+                                          "at least one number, uppercase, lowercase, and special character needed.");
                     }
 
-                    break;
+                    while (true)
+                    {
+                        Console.Write("Enter new password: ");
+
+                        _adminPassword = Console.ReadLine();
+                        if (string.IsNullOrEmpty(_adminPassword))
+                        {
+                            Console.WriteLine("ATA password cannot be empty...");
+                            continue;
+                        }
+
+                        if (ValidatePassword())
+                            break;
+
+                        Console.WriteLine("Password must be 8-30 character and have at least one number, " +
+                                          "uppercase letter, lowercase letter, and special character.");
+                    }
+                }
+
+                if (!_reset.HasValue)
+                {
+                    Console.WriteLine();
+                    _reset = GetUserBool("Are we resetting the ATA first?");
                 }
 
                 Console.Clear();
+                if (_confirmEntry)
+                {
+                    Console.WriteLine("Current password: " + _password);
+                    Console.WriteLine("New password: " + _adminPassword);
+                    Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
+                    Console.WriteLine("SIP password: " + _authenticatePassword);
+                    Console.WriteLine("Primary server: " + _primaryServer);
+                    Console.WriteLine("Failover server: " + _failoverServer);
+                    Console.WriteLine("Resetting the ATA first: " + _reset);
+                    Console.WriteLine();
 
-                _reset = GetUserBool("Are we resetting the ATA first?");
-
-                Console.Clear();
-                Console.WriteLine("Current password: " + _password);
-                Console.WriteLine("New password: " + _adminPassword);
-                Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
-                Console.WriteLine("SIP password: " + _authenticatePassword);
-                Console.WriteLine("Primary server: " + _primaryServer);
-                Console.WriteLine("Failover server: " + _failoverServer);
-                Console.WriteLine("Resetting the ATA first: " + _reset);
-                Console.WriteLine();
-
-                done = GetUserBool("Is all of the above correct?");
-            }
-        }
-
-        private static void VerifyPhone()
-        {
-            while (true)
-            {
-                Console.Write("What's the phone number you wish to assign to this adapter? ");
-                _phoneNumber = Console.ReadLine();
-                _phoneNumber = new string(
-                    (_phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray()); // strips any non-numeric characters
-                if (_phoneNumber.Length == 10 && !_phoneNumber.StartsWith("1")) // if the number doesn't start with a 1
-                    _phoneNumber = "1" + _phoneNumber;
-                if (_phoneNumber.Length == 11)
-                    return;
-                Console.WriteLine("Sorry, that's not a valid phone number. Please try again.");
+                    done = GetUserBool("Is all of the above correct?");
+                }
+                else
+                    done = true;
             }
         }
 
@@ -522,7 +682,7 @@ namespace GrandstreamATAConfigurator
         }
 
         // helper functions
-        
+
         public static bool GetUserBool(string prompt)
         {
             while (true)
@@ -545,7 +705,34 @@ namespace GrandstreamATAConfigurator
 
         private static bool IsUpToDate(bool skipPrompt)
         {
+            if (_update is false) return true;
+
+            using var client = new SshClient(_ataIp, Username, _password);
+
+            for (var i = 0; i < 60; i++)
+            {
+                if (i == 59)
+                {
+                    Console.WriteLine("Could not reconnect to the ATA. " +
+                                      "Please ensure it is online, then re-run the program.");
+                    Console.ReadKey();
+                    Environment.Exit(-19);
+                }
+
+                try
+                {
+                    client.Connect();
+                    client.Disconnect();
+                    break;
+                }
+                catch (SocketException)
+                {
+                    Thread.Sleep(5000);
+                }
+            }
+
             GetModelNumber();
+
             if (!skipPrompt)
             {
                 if (!File.Exists(Path.Join(Directory.GetCurrentDirectory(), $"assets/{_modelNumber}fw.bin")))
@@ -580,29 +767,7 @@ namespace GrandstreamATAConfigurator
                 }
             }
 
-            using var client = new SshClient(_ataIp, Username, _password);
-
-            for (var i = 0; i < 60; i++)
-            {
-                if (i == 59)
-                {
-                    Console.WriteLine("Could not reconnect to the ATA. " +
-                                      "Please ensure it is online, then re-run the program.");
-                    Console.ReadKey();
-                    Environment.Exit(-19);
-                }
-
-                try
-                {
-                    client.Connect();
-                    break;
-                }
-                catch (SocketException)
-                {
-                    Thread.Sleep(5000);
-                }
-            }
-
+            client.Connect();
             using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
 
             // request status to get ATA version
@@ -621,7 +786,9 @@ namespace GrandstreamATAConfigurator
                     if (_currentVersionNumber > _foundVersionNumber)
                     {
                         // we ! this because UpToDate() returns false if we need to upgrade
-                        return !GetUserBool("ATA is out of date! Shall we upgrade?");
+                        if (!_update.HasValue)
+                            return !GetUserBool("ATA is out of date! Shall we upgrade?");
+                        return (!_update.Value);
                     }
 
                     if (_currentVersionNumber <= _foundVersionNumber)
@@ -657,11 +824,27 @@ namespace GrandstreamATAConfigurator
                     _modelNumber = line[19..].ToLower(); // model string starts 19 characters in
                 }
             }
-            Console.WriteLine("Model " + _modelNumber);
         }
 
-            var line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000));
-            _modelNumber = line[15..].ToLower();
+        private static bool ValidatePassword()
+        {
+            if (_currentVersionNumber < new Version("1.0.29.0")) return true;
+
+            // credits to Dana on StackOverflow for this regex
+            // https://stackoverflow.com/a/62624132
+            return Regex.IsMatch(_adminPassword,
+                "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])([a-zA-Z0-9@$!%*?&]{8,30})$");
+        }
+
+        private static bool ValidatePhone()
+        {
+            _phoneNumber = new string(
+                (_phoneNumber ?? string.Empty).Where(char.IsDigit)
+                .ToArray()); // strips any non-numeric characters
+            if (_phoneNumber.Length == 10 &&
+                !_phoneNumber.StartsWith("1")) // if the number doesn't start with a 1
+                _phoneNumber = "1" + _phoneNumber;
+            return _phoneNumber.Length == 11;
         }
     }
 }
