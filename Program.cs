@@ -15,7 +15,7 @@ namespace GrandstreamATAConfigurator
     {
         // BEGIN GLOBAL VARIABLES
 
-        private static Version GatasVersion = new("2.2.3.1");
+        private static Version GatasVersion = new("2.3.0");
 
         // for locating, connecting to ATA
         private static NetworkInterface _interfaceToUse;
