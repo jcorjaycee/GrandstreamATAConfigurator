@@ -77,6 +77,7 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine();
                     Console.WriteLine("Found interface: " + iInterface.Name);
                     if (!Program.GetUserBool("Is this the correct interface?")) break;
+                    Console.WriteLine();
                     return iInterface;
             }
 
