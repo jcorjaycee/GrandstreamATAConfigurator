@@ -89,6 +89,43 @@ namespace GrandstreamATAConfigurator
                 return;
             }
 
+            if (args.Any(arg => arg is "-d" or "--default"))
+            {
+                var voidArguments = new[]
+                {
+                    "--noupdate",
+                    "--update",
+                    "--noreset",
+                    "--reset",
+                    "--noconfirm",
+                    "-ds",
+                    "--defaultServer",
+                    "-as",
+                    "--alternateServer",
+                    "-d",
+                    "--default"
+                };
+
+                var defaultArguments = new[]
+                {
+                    "--update",
+                    "--reset",
+                    "--noconfirm",
+                    "-ds"
+                };
+                
+                // remove all existing args that were passed that could conflict with -d using LINQ, including itself
+                args = voidArguments.Aggregate(args, (current, voidArgs) => 
+                    current.Where(arg => arg != voidArgs).ToArray());
+
+                // add all of the necessary default arguments to the arg list
+                args = defaultArguments.Aggregate(args, (current, arg) => 
+                    (current ?? Enumerable.Empty<string>()).Concat(Enumerable.Repeat(arg, 1)).ToArray());
+                
+                Console.WriteLine("[{0}]", string.Join(", ", args));
+                // the above would be way simpler if string[] args could be List<string> args...
+            }
+            
             var skipNext = false;
             for (var arg = 0; arg < args.Length; arg++)
             {
