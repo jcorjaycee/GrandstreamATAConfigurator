@@ -62,18 +62,26 @@ namespace GrandstreamATAConfigurator
                 Console.WriteLine("Version " + GatasVersion);
                 Console.WriteLine();
                 Console.WriteLine("Input parameters:");
-                Console.WriteLine("{0,-35}{1,-10}", "  -ip, --ipAddress", "Specify IP address of ATA, skipping port scanning");
+                Console.WriteLine("{0,-35}{1,-10}", "  -ip, --ipAddress",
+                    "Specify IP address of ATA, skipping port scanning");
                 Console.WriteLine("{0,-35}{1,-10}", "  -cpw, --currentPassword", "Specify existing ATA password");
-                Console.WriteLine("{0,-35}{1,-10}", "  -p, --phoneNumber", "Specify the phone number or SIP username to provision");
-                Console.WriteLine("{0,-35}{1,-10}", "  -a, --authenticatePassword", "Specify the SIP password to provision");
-                Console.WriteLine("{0,-35}{1,-10}", "  -pw, --ataPassword ", "Specify a new ATA password to configure for SSH and HTTP access");
+                Console.WriteLine("{0,-35}{1,-10}", "  -p, --phoneNumber",
+                    "Specify the phone number or SIP username to provision");
+                Console.WriteLine("{0,-35}{1,-10}", "  -a, --authenticatePassword",
+                    "Specify the SIP password to provision");
+                Console.WriteLine("{0,-35}{1,-10}", "  -pw, --ataPassword ",
+                    "Specify a new ATA password to configure for SSH and HTTP access");
                 Console.WriteLine("{0,-35}{1,-10}", "  -ps, --primaryServer", "Specify the primary SIP server");
-                Console.WriteLine("{0,-35}{1,-10}", "  -fs, --failoverServer", "Specify the failover SIP server (optional)");
+                Console.WriteLine("{0,-35}{1,-10}", "  -fs, --failoverServer",
+                    "Specify the failover SIP server (optional)");
                 Console.WriteLine();
                 Console.WriteLine("Prompt skipping:");
-                Console.WriteLine("{0,-35}{1,-10}", "  --update, --noupdate", "Set choice for updating ATA, if an update is available");
-                Console.WriteLine("{0,-35}{1,-10}", "  --reset, --noreset", "Set choice for factory resetting ATA before config");
-                Console.WriteLine("{0,-35}{1,-10}", "  --noconfirm", "Skips prompt that has user review settings before configuring");
+                Console.WriteLine("{0,-35}{1,-10}", "  --update, --noupdate",
+                    "Set choice for updating ATA, if an update is available");
+                Console.WriteLine("{0,-35}{1,-10}", "  --reset, --noreset",
+                    "Set choice for factory resetting ATA before config");
+                Console.WriteLine("{0,-35}{1,-10}", "  --noconfirm",
+                    "Skips prompt that has user review settings before configuring");
                 return;
             }
 
@@ -396,8 +404,8 @@ namespace GrandstreamATAConfigurator
 
         private static void GetParams()
         {
-            var done = false;
-            while (!done)
+            var doneParams = false;
+            while (!doneParams)
             {
                 Console.Clear();
                 Console.WriteLine("We're now going to get some info from you.");
@@ -477,19 +485,25 @@ namespace GrandstreamATAConfigurator
                 Console.Clear();
                 if (_confirmEntry)
                 {
-                    Console.WriteLine("Current password: " + _password);
-                    Console.WriteLine("New password: " + _adminPassword);
+                    Console.WriteLine("Current ATA password: " + _password);
+                    Console.WriteLine("New ATA password: " + _adminPassword);
                     Console.WriteLine("VoIP phone number to add: " + _phoneNumber);
                     Console.WriteLine("SIP password: " + _authenticatePassword);
                     Console.WriteLine("Primary server: " + _primaryServer);
                     Console.WriteLine("Failover server: " + _failoverServer);
-                    Console.WriteLine("Resetting the ATA first: " + _reset);
+                    Console.WriteLine("Resetting the ATA first: " + (_reset is true ? "yes" : "no"));
                     Console.WriteLine();
 
-                    done = GetUserBool("Is all of the above correct?");
+                    doneParams = GetUserBool("Is all of the above correct?");
+
+                    if (doneParams) continue;
+                    _adminPassword =
+                        _phoneNumber = _authenticatePassword = _primaryServer = _failoverServer = "";
+                    _reset = null;
+                    Console.Clear();
                 }
                 else
-                    done = true;
+                    doneParams = true;
             }
         }
 
@@ -507,7 +521,7 @@ namespace GrandstreamATAConfigurator
                 if (reset)
                 {
                     warning = "We will now reset the ATA. Do NOT touch anything during this process.";
-                    commands = new[] { "reset 0", "y" };
+                    commands = new[] {"reset 0", "y"};
                 }
                 else
                 {
