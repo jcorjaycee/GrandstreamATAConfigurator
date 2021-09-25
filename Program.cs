@@ -110,7 +110,7 @@ namespace GrandstreamATAConfigurator
                 {
                     "--update",
                     "--reset",
-                    // "--noconfirm",
+                    "--noconfirm",
                     "-ds"
                 };
 
