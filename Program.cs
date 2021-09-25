@@ -122,8 +122,8 @@ namespace GrandstreamATAConfigurator
                 args = defaultArguments.Aggregate(args, (current, arg) =>
                     (current ?? Enumerable.Empty<string>()).Concat(Enumerable.Repeat(arg, 1)).ToArray());
 
-                Console.WriteLine("[{0}]", string.Join(", ", args));
-                // the above would be way simpler if string[] args could be List<string> args...
+                // Console.WriteLine("[{0}]", string.Join(", ", args));
+                // Uncomment the above to see the new list of args
             }
 
             var skipNext = false;
