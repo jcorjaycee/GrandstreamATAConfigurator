@@ -357,9 +357,7 @@ namespace GrandstreamATAConfigurator
             GetParams();
 
             // take action to reset or configure ATA
-            if (_reset is true)
-                ResetOrConfigureAta(true);
-            ResetOrConfigureAta(false);
+            ResetOrConfigureAta(_reset is true);
         }
 
         // extensions of main (for readability)
