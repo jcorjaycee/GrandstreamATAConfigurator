@@ -555,7 +555,9 @@ namespace GrandstreamATAConfigurator
 
                     if (doneParams) continue;
                     _adminPassword =
-                        _phoneNumber = _authenticatePassword = _primaryServer = _failoverServer = "";
+                        _phoneNumber = _authenticatePassword = "";
+                    _primaryServer = "voip.start.ca";
+                    _failoverServer = "voip2.start.ca:6060";
                     _reset = null;
                     _serverSet = false;
                     Console.Clear();
