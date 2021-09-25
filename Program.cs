@@ -110,7 +110,7 @@ namespace GrandstreamATAConfigurator
                 {
                     "--update",
                     "--reset",
-                    "--noconfirm",
+                    // "--noconfirm",
                     "-ds"
                 };
                 
@@ -557,6 +557,7 @@ namespace GrandstreamATAConfigurator
                         _adminPassword =
                             _phoneNumber = _authenticatePassword = _primaryServer = _failoverServer = "";
                         _reset = null;
+                        Console.Clear();
                     }
                     else
                         doneParams = true;
