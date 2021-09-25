@@ -552,6 +552,11 @@ namespace GrandstreamATAConfigurator
                         Console.WriteLine();
 
                         doneParams = GetUserBool("Is all of the above correct?");
+
+                        if (doneParams) continue;
+                        _adminPassword =
+                            _phoneNumber = _authenticatePassword = _primaryServer = _failoverServer = "";
+                        _reset = null;
                     }
                     else
                         doneParams = true;
