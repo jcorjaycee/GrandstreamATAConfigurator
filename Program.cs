@@ -729,16 +729,27 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine("WARNING: Couldn't connect to the ATA after reboot.");
                 }
 
-                Console.Write(reset
-                    ? "ATA successfully reset, press any key to continue..."
-                    : "ATA successfully configured, press any key to exit...");
-                Console.ReadKey();
+                if (_confirmEntry)
+                {
+                    Console.Write(reset
+                        ? "ATA successfully reset, press any key to continue..."
+                        : "ATA successfully configured, press any key to exit...");
+                    Console.ReadKey();
+                }
+                else
+                {
+                    Console.Write(reset
+                    ? "ATA reset, continuing..."
+                    : "ATA configured, exiting.");
+                }
+                
+                
                 if (reset)
                 {
                     reset = false;
                     continue;
                 }
-
+                
                 client.Dispose();
 
                 Console.WriteLine();
