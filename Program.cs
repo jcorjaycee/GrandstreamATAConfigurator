@@ -500,7 +500,6 @@ namespace GrandstreamATAConfigurator
 
                 if (string.IsNullOrWhiteSpace(_adminPassword))
                 {
-                    Console.WriteLine(_foundVersionNumber);
                     if (_foundVersionNumber >= new Version("1.0.29.0"))
                     {
                         // this password requirement is new as of this update
@@ -577,7 +576,7 @@ namespace GrandstreamATAConfigurator
                 if (reset)
                 {
                     warning = "We will now reset the ATA. Do NOT touch anything during this process.";
-                    commands = new[] {"reset 0", "y"};
+                    commands = new[] { "reset 0", "y" };
                 }
                 else
                 {
@@ -694,7 +693,7 @@ namespace GrandstreamATAConfigurator
                     // string line;
                     // while((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
                     //     Console.WriteLine(line);
-                    
+
                     // Q: Why is the sleep so high when resetting the ATA?
                     // A: If GATAC runs this reset too quickly, for some reason,
                     // all methods of login fail, both HTTP and SSH, due to invalid password
@@ -746,17 +745,17 @@ namespace GrandstreamATAConfigurator
                 else
                 {
                     Console.Write(reset
-                    ? "ATA reset, continuing..."
-                    : "ATA configured, exiting.");
+                        ? "ATA reset, continuing..."
+                        : "ATA configured, exiting.");
                 }
-                
-                
+
+
                 if (reset)
                 {
                     reset = false;
                     continue;
                 }
-                
+
                 client.Dispose();
 
                 Console.WriteLine();
@@ -797,7 +796,7 @@ namespace GrandstreamATAConfigurator
         private static bool IsUpToDate(bool skipPrompt)
         {
             if (_update is false) return true;
-            
+
             Console.WriteLine("Checking for updates...");
 
             using var client = new SshClient(_ataIp, Username, _password);
