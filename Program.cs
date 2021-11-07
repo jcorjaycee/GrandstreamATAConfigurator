@@ -35,7 +35,7 @@ namespace GrandstreamATAConfigurator
         private static bool _serverSet;
 
         // Grandstream config variables
-        private static string _adminPassword = "admin";
+        private static string _adminPassword = "";
         private static string _authenticatePassword = "";
         private static string _failoverServer = "voip2.start.ca:6060";
         private const int NoKeyTimeout = 4;
@@ -109,7 +109,7 @@ namespace GrandstreamATAConfigurator
                 var defaultArguments = new[]
                 {
                     "--update",
-                    "--reset",
+                    "--noreset",
                     "--noconfirm",
                     "-ds"
                 };
@@ -488,6 +488,7 @@ namespace GrandstreamATAConfigurator
                                 done = true;
                                 break;
                             default:
+                                Console.WriteLine();
                                 Console.WriteLine("Sorry, that wasn't a valid input.");
                                 break;
                         }
@@ -499,7 +500,8 @@ namespace GrandstreamATAConfigurator
 
                 if (string.IsNullOrWhiteSpace(_adminPassword))
                 {
-                    if (_currentVersionNumber >= new Version("1.0.29.0"))
+                    Console.WriteLine(_foundVersionNumber);
+                    if (_foundVersionNumber >= new Version("1.0.29.0"))
                     {
                         // this password requirement is new as of this update
                         // this may break the passwords that companies were previously using!
@@ -509,7 +511,7 @@ namespace GrandstreamATAConfigurator
                     }
                     else
                     {
-                        Console.WriteLine("Please enter the customer number to serve as the new ATA password: ");
+                        Console.WriteLine("Please enter the customer number to serve as the new ATA password. ");
                     }
 
                     while (true)
@@ -531,11 +533,7 @@ namespace GrandstreamATAConfigurator
                     }
                 }
 
-                if (!_reset.HasValue)
-                {
-                    Console.WriteLine();
-                    _reset = GetUserBool("Are we resetting the ATA first?");
-                }
+                _reset ??= GetUserBool("Are we resetting the ATA first?");
 
                 Console.Clear();
                 if (_confirmEntry)
@@ -696,7 +694,12 @@ namespace GrandstreamATAConfigurator
                     // string line;
                     // while((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
                     //     Console.WriteLine(line);
-                    Thread.Sleep(100);
+                    
+                    // Q: Why is the sleep so high when resetting the ATA?
+                    // A: If GATAC runs this reset too quickly, for some reason,
+                    // all methods of login fail, both HTTP and SSH, due to invalid password
+                    // I suspect it's due to password database corruption, but don't ask why it would be
+                    Thread.Sleep(reset ? 7000 : 100);
                     index++;
                 }
 
@@ -704,20 +707,24 @@ namespace GrandstreamATAConfigurator
                 client.Disconnect();
 
                 // continually ping ATA until it comes online
-                for (var i = 0; i < 60; i++)
+                for (var i = 0; i < 20; i++)
                 {
                     try
                     {
-                        // alternate between current creds and default creds
-                        // ATA may have factory reset to default creds while running through this function
-                        client = i % 2 == 0
-                            ? new SshClient(_ataIp, Username, _adminPassword)
-                            : new SshClient(_ataIp, "admin", "admin");
+                        client = reset
+                            ? new SshClient(_ataIp, Username, "admin")
+                            : new SshClient(_ataIp, Username, _adminPassword);
                         client.Connect();
                     }
-                    catch (Exception)
+                    catch (SocketException)
                     {
                         Thread.Sleep(2000);
+                        continue;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("An error occured. This may prove to be fatal");
+                        Console.WriteLine(e);
                         continue;
                     }
 
@@ -780,6 +787,7 @@ namespace GrandstreamATAConfigurator
                     case ConsoleKey.N:
                         return false;
                     default:
+                        Console.WriteLine();
                         Console.WriteLine("Sorry, that wasn't a valid input.");
                         break;
                 }
@@ -789,6 +797,8 @@ namespace GrandstreamATAConfigurator
         private static bool IsUpToDate(bool skipPrompt)
         {
             if (_update is false) return true;
+            
+            Console.WriteLine("Checking for updates...");
 
             using var client = new SshClient(_ataIp, Username, _password);
 
@@ -857,7 +867,7 @@ namespace GrandstreamATAConfigurator
             sshStream.WriteLine("status");
             // go through each line
             string line;
-            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000))) != null)
+            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
             {
                 if (line.ToLower().Contains("program --"))
                 {
@@ -911,7 +921,7 @@ namespace GrandstreamATAConfigurator
 
         private static bool ValidatePassword()
         {
-            if (_currentVersionNumber < new Version("1.0.29.0")) return true;
+            if (_foundVersionNumber < new Version("1.0.29.0")) return true;
 
             // credits to Dana on StackOverflow for this regex
             // https://stackoverflow.com/a/62624132
