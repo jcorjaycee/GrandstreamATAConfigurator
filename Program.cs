@@ -35,7 +35,7 @@ namespace GrandstreamATAConfigurator
         private static bool _skipFailover; // confirm the details input by the user
 
         // Grandstream config variables
-        private static string _adminPassword = "admin";
+        private static string _adminPassword = "";
         private static string _authenticatePassword = "";
         private static string _failoverServer = "";
         private const int NoKeyTimeout = 4;
@@ -338,7 +338,8 @@ namespace GrandstreamATAConfigurator
                 }
                 catch (SshAuthenticationException)
                 {
-                    Console.WriteLine("Connection attempt using the password provided failed. Press any key to close.");
+                    Console.WriteLine(
+                        "Connection attempt using the password provided failed. Press any key to close.");
                     Console.ReadKey();
                     Environment.Exit(5);
                 }
@@ -360,7 +361,7 @@ namespace GrandstreamATAConfigurator
                 for (var i = 0; i < 3; i++)
                 {
                     Console.Write(i == 0
-                        ? "Please enter the password for the ATA. This may be a customer number: "
+                        ? "Please enter the password for the ATA: "
                         : "Hmm, that password didn't work. Try again: ");
                     _password = Console.ReadLine();
                     try
@@ -443,16 +444,22 @@ namespace GrandstreamATAConfigurator
                     _failoverServer = Console.ReadLine();
                 }
 
+                Console.WriteLine();
+                Console.WriteLine();
+
                 if (string.IsNullOrWhiteSpace(_adminPassword))
                 {
-                    Console.WriteLine("What should the new ATA password be?");
-
-                    if (_currentVersionNumber >= new Version("1.0.29.0"))
+                    if (_foundVersionNumber >= new Version("1.0.29.0"))
                     {
                         // this password requirement is new as of this update
                         // this may break the passwords that companies were previously using!
+                        Console.WriteLine("What should the new ATA password be?");
                         Console.WriteLine("Password rules: 8-30 characters, " +
                                           "at least one number, uppercase, lowercase, and special character needed.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Please enter the new ATA password. ");
                     }
 
                     while (true)
@@ -474,11 +481,7 @@ namespace GrandstreamATAConfigurator
                     }
                 }
 
-                if (!_reset.HasValue)
-                {
-                    Console.WriteLine();
-                    _reset = GetUserBool("Are we resetting the ATA first?");
-                }
+                _reset ??= GetUserBool("Are we resetting the ATA first?");
 
                 Console.Clear();
                 if (_confirmEntry)
@@ -519,7 +522,7 @@ namespace GrandstreamATAConfigurator
                 if (reset)
                 {
                     warning = "We will now reset the ATA. Do NOT touch anything during this process.";
-                    commands = new[] {"reset 0", "y"};
+                    commands = new[] { "reset 0", "y" };
                 }
                 else
                 {
@@ -636,7 +639,12 @@ namespace GrandstreamATAConfigurator
                     // string line;
                     // while((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
                     //     Console.WriteLine(line);
-                    Thread.Sleep(100);
+
+                    // Q: Why is the sleep so high when resetting the ATA?
+                    // A: If GATAC runs this reset too quickly, for some reason,
+                    // all methods of login fail, both HTTP and SSH, due to invalid password
+                    // I suspect it's due to password database corruption, but don't ask why it would be
+                    Thread.Sleep(reset ? 7000 : 100);
                     index++;
                 }
 
@@ -644,20 +652,24 @@ namespace GrandstreamATAConfigurator
                 client.Disconnect();
 
                 // continually ping ATA until it comes online
-                for (var i = 0; i < 60; i++)
+                for (var i = 0; i < 20; i++)
                 {
                     try
                     {
-                        // alternate between current creds and default creds
-                        // ATA may have factory reset to default creds while running through this function
-                        client = i % 2 == 0
-                            ? new SshClient(_ataIp, Username, _adminPassword)
-                            : new SshClient(_ataIp, "admin", "admin");
+                        client = reset
+                            ? new SshClient(_ataIp, Username, "admin")
+                            : new SshClient(_ataIp, Username, _adminPassword);
                         client.Connect();
                     }
-                    catch (Exception)
+                    catch (SocketException)
                     {
                         Thread.Sleep(2000);
+                        continue;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("An error occured. This may prove to be fatal");
+                        Console.WriteLine(e);
                         continue;
                     }
 
@@ -669,10 +681,21 @@ namespace GrandstreamATAConfigurator
                     Console.WriteLine("WARNING: Couldn't connect to the ATA after reboot.");
                 }
 
-                Console.Write(reset
-                    ? "ATA successfully reset, press any key to continue..."
-                    : "ATA successfully configured, press any key to exit...");
-                Console.ReadKey();
+                if (_confirmEntry)
+                {
+                    Console.Write(reset
+                        ? "ATA successfully reset, press any key to continue..."
+                        : "ATA successfully configured, press any key to exit...");
+                    Console.ReadKey();
+                }
+                else
+                {
+                    Console.Write(reset
+                        ? "ATA reset, continuing..."
+                        : "ATA configured, exiting.");
+                }
+
+
                 if (reset)
                 {
                     reset = false;
@@ -709,6 +732,7 @@ namespace GrandstreamATAConfigurator
                     case ConsoleKey.N:
                         return false;
                     default:
+                        Console.WriteLine();
                         Console.WriteLine("Sorry, that wasn't a valid input.");
                         break;
                 }
@@ -718,6 +742,8 @@ namespace GrandstreamATAConfigurator
         private static bool IsUpToDate(bool skipPrompt)
         {
             if (_update is false) return true;
+
+            Console.WriteLine("Checking for updates...");
 
             using var client = new SshClient(_ataIp, Username, _password);
 
@@ -786,7 +812,7 @@ namespace GrandstreamATAConfigurator
             sshStream.WriteLine("status");
             // go through each line
             string line;
-            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000))) != null)
+            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
             {
                 if (line.ToLower().Contains("program --"))
                 {
@@ -840,7 +866,7 @@ namespace GrandstreamATAConfigurator
 
         private static bool ValidatePassword()
         {
-            if (_currentVersionNumber < new Version("1.0.29.0")) return true;
+            if (_foundVersionNumber < new Version("1.0.29.0")) return true;
 
             // credits to Dana on StackOverflow for this regex
             // https://stackoverflow.com/a/62624132
