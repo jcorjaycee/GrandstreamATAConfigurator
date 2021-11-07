@@ -313,6 +313,10 @@ namespace GrandstreamATAConfigurator
 
                 _currentVersionNumber = _foundVersionNumber;
             }
+            else
+            {
+                GetModelAndVersion();
+            }
 
             // gather user data for configuration
             GetParams();
@@ -443,8 +447,7 @@ namespace GrandstreamATAConfigurator
                     Console.Write("Your failover server? (Optional): ");
                     _failoverServer = Console.ReadLine();
                 }
-
-                Console.WriteLine();
+                
                 Console.WriteLine();
 
                 if (string.IsNullOrWhiteSpace(_adminPassword))
