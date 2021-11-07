@@ -9,6 +9,8 @@
 <!--        <PublishTrimmed>true</PublishTrimmed>-->
 <!--        <PublishReadyToRun>true</PublishReadyToRun>-->
         <ApplicationIcon>icon.ico</ApplicationIcon>
+
+        <PreBuildEvent>echo Building branch: multiboard</PreBuildEvent>
     </PropertyGroup>
 
     <ItemGroup>
