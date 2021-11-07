@@ -478,7 +478,8 @@ namespace GrandstreamATAConfigurator
 
                         if (ValidatePassword())
                             break;
-
+                        
+                        Console.WriteLine();
                         Console.WriteLine("Password must be 8-30 character and have at least one number, " +
                                           "uppercase letter, lowercase letter, and special character.");
                     }
