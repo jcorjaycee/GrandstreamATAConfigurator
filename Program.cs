@@ -352,6 +352,10 @@ namespace GrandstreamATAConfigurator
 
                 _currentVersionNumber = _foundVersionNumber;
             }
+            else
+            {
+                GetModelAndVersion();
+            }
 
             // gather user data for configuration
             GetParams();
@@ -494,8 +498,7 @@ namespace GrandstreamATAConfigurator
                         }
                     }
                 }
-
-                Console.WriteLine();
+                
                 Console.WriteLine();
 
                 if (string.IsNullOrWhiteSpace(_adminPassword))
