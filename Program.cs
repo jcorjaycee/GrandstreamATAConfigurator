@@ -481,6 +481,7 @@ namespace GrandstreamATAConfigurator
                     }
                 }
 
+                Console.WriteLine();
                 _reset ??= GetUserBool("Are we resetting the ATA first?");
 
                 Console.Clear();
@@ -747,9 +748,9 @@ namespace GrandstreamATAConfigurator
 
             using var client = new SshClient(_ataIp, Username, _password);
 
-            for (var i = 0; i < 60; i++)
+            for (var i = 0; i < 20; i++)
             {
-                if (i == 59)
+                if (i == 19)
                 {
                     Console.WriteLine("Could not reconnect to the ATA. " +
                                       "Please ensure it is online, then re-run the program.");
@@ -765,11 +766,11 @@ namespace GrandstreamATAConfigurator
                 }
                 catch (SocketException)
                 {
-                    Thread.Sleep(5000);
+                    Thread.Sleep(2000);
                 }
             }
 
-            GetModelNumber();
+            GetModelAndVersion();
 
             if (!skipPrompt)
             {
@@ -805,37 +806,21 @@ namespace GrandstreamATAConfigurator
                 }
             }
 
-            client.Connect();
-            using var sshStream = client.CreateShellStream("ssh", 80, 40, 80, 40, 1024);
-
-            // request status to get ATA version
-            sshStream.WriteLine("status");
-            // go through each line
-            string line;
-            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
+            if (skipPrompt)
+                return _currentVersionNumber == _foundVersionNumber;
+            Console.WriteLine("Found program version: " + _foundVersionNumber);
+            Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
+            if (_currentVersionNumber > _foundVersionNumber)
             {
-                if (line.ToLower().Contains("program --"))
-                {
-                    _foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
-                    if (skipPrompt)
-                        return _currentVersionNumber == _foundVersionNumber;
-                    Console.WriteLine("Found program version: " + _foundVersionNumber);
-                    Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
-                    if (_currentVersionNumber > _foundVersionNumber)
-                    {
-                        // we ! this because UpToDate() returns false if we need to upgrade
-                        if (!_update.HasValue)
-                            return !GetUserBool("ATA is out of date! Shall we upgrade?");
-                        return (!_update.Value);
-                    }
+                // we ! this because UpToDate() returns false if we need to upgrade
+                if (!_update.HasValue)
+                    return !GetUserBool("ATA is out of date! Shall we upgrade?");
+                return (!_update.Value);
+            }
 
-                    if (_currentVersionNumber <= _foundVersionNumber)
-                    {
-                        return true;
-                    }
-                }
-
-                Thread.Sleep((100));
+            if (_currentVersionNumber <= _foundVersionNumber)
+            {
+                return true;
             }
 
             Console.WriteLine("Couldn't get a version number. " +
@@ -846,7 +831,7 @@ namespace GrandstreamATAConfigurator
             throw new InvalidOperationException();
         }
 
-        private static void GetModelNumber()
+        private static void GetModelAndVersion()
         {
             using var client = new SshClient(_ataIp, Username, _password);
             client.Connect();
@@ -855,11 +840,16 @@ namespace GrandstreamATAConfigurator
             sshStream.WriteLine("status");
             // go through each line
             string line;
-            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(2000))) != null)
+            while ((line = sshStream.ReadLine(TimeSpan.FromMilliseconds(200))) != null)
             {
                 if (line.ToLower().Contains("model:"))
                 {
                     _modelNumber = line[19..].ToLower(); // model string starts 19 characters in
+                }
+
+                if (line.ToLower().Contains("program --"))
+                {
+                    _foundVersionNumber = new Version(line[15..]); // program string starts 15 characters in
                 }
             }
         }
