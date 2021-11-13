@@ -15,7 +15,7 @@ namespace GrandstreamATAConfigurator
     {
         // BEGIN GLOBAL VARIABLES
 
-        private static readonly Version GatasVersion = new("2.3.0");
+        private static readonly Version GatacVersion = new("2.3.0");
 
         // for locating, connecting to ATA
         private static NetworkInterface _interfaceToUse;
@@ -59,7 +59,7 @@ namespace GrandstreamATAConfigurator
             if (args.Any(arg => arg is "-h" or "--help"))
             {
                 Console.WriteLine("GrandstreamATAConfigurator Help");
-                Console.WriteLine("Version " + GatasVersion);
+                Console.WriteLine("Version " + GatacVersion);
                 Console.WriteLine();
                 Console.WriteLine("Input parameters:");
                 Console.WriteLine("{0,-35}{1,-10}", "  -ip, --ipAddress",
@@ -705,7 +705,7 @@ namespace GrandstreamATAConfigurator
 
         // helper functions
 
-        public static bool GetUserBool(string prompt)
+        private static bool GetUserBool(string prompt)
         {
             while (true)
             {
@@ -758,9 +758,9 @@ namespace GrandstreamATAConfigurator
 
             GetModelAndVersion();
 
-            if (!skipPrompt)
+            switch (skipPrompt)
             {
-                if (!File.Exists(Path.Join(Directory.GetCurrentDirectory(), $"assets/{_modelNumber}fw.bin")))
+                case false when !File.Exists(Path.Join(Directory.GetCurrentDirectory(), $"assets/{_modelNumber}fw.bin")):
                 {
                     Console.WriteLine("Not seeing any update files, so not checking for an update...");
                     for (var i = 0; i < 3; i++)
@@ -771,29 +771,31 @@ namespace GrandstreamATAConfigurator
 
                     return true;
                 }
-
-                try
-                {
-                    // try to get the version from the version file
-                    var sr = new StreamReader($"assets/version-{_modelNumber}");
-                    _currentVersionNumber = new Version(sr.ReadLine() ?? throw new InvalidOperationException());
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("Seems the server is missing a valid version file." +
-                                      " Please add one if you wish to enable updates!");
-                    for (var i = 0; i < 3; i++)
+                case false:
+                    try
                     {
-                        Console.Write(".");
-                        Thread.Sleep(1000);
+                        // try to get the version from the version file
+                        var sr = new StreamReader($"assets/version-{_modelNumber}");
+                        _currentVersionNumber = new Version(sr.ReadLine() ?? throw new InvalidOperationException());
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("Seems the server is missing a valid version file." +
+                                          " Please add one if you wish to enable updates!");
+                        for (var i = 0; i < 3; i++)
+                        {
+                            Console.Write(".");
+                            Thread.Sleep(1000);
+                        }
+
+                        return true;
                     }
 
-                    return true;
-                }
+                    break;
+                case true:
+                    return _currentVersionNumber == _foundVersionNumber;
             }
 
-            if (skipPrompt)
-                return _currentVersionNumber == _foundVersionNumber;
             Console.WriteLine("Found program version: " + _foundVersionNumber);
             Console.WriteLine("Most up-to-date program version: " + _currentVersionNumber);
             if (_currentVersionNumber > _foundVersionNumber)
