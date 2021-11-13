@@ -116,8 +116,8 @@ namespace GrandstreamATAConfigurator
                     {
                         Console.WriteLine("Whoops, couldn't get that... " + newIpBuilder);
                         Console.WriteLine(e);
-                        string userWarning = "We hit a critical error and can't continue. " +
-                                             "Please report the above info to the developer.";
+                        const string userWarning = "We hit a critical error and can't continue. " +
+                                                   "Please report the above info to the developer.";
                         Console.WriteLine();
                         Console.WriteLine(new string('=', userWarning.Length));
                         Console.WriteLine(userWarning);
