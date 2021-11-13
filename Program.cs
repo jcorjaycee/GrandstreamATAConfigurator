@@ -199,29 +199,11 @@ namespace GrandstreamATAConfigurator
             Console.WriteLine();
 
             // find which interface we should be on - WiFi, Ethernet, etc
-            _interfaceToUse = NetworkUtils.GetInterface();
+            // then run PortScan() to locate the IP of the ATA
+            _interfaceToUse = NetworkUtils.FindAta(_ataIp, out _ataIp);
 
             // location of web server, should we need to upgrade firmware
             _serverIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
-
-            // this variable gets mutated later to represent the ATA IP
-            // we declare it here to get the proper subnet
-            if (string.IsNullOrWhiteSpace(_ataIp))
-            {
-                _ataIp = NetworkUtils.GetLocalIPv4(_interfaceToUse);
-
-                Console.WriteLine();
-                Console.WriteLine("Now scanning your network for a Grandstream device... Please wait.");
-                if (NetworkUtils.PortScan(_ataIp, out _ataIp)) // we found something!
-                    Console.WriteLine("Grandstream device found! Using IP: " + _ataIp);
-                else // no devices found...
-                {
-                    Console.WriteLine("Oops, we can't find a Grandstream device on this network. Make " +
-                                      "sure you're connected to the right network, then try again.");
-                    Console.ReadKey();
-                    return;
-                }
-            }
 
             AttemptConnect(); // try connecting to the ATA, prompt for credentials if needed
             Console.Clear();
