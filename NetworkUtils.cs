@@ -17,6 +17,8 @@ namespace GrandstreamATAConfigurator
             443
         };
 
+        private static bool _sigintHit;
+
         // interface scanning
 
         /* UP FRONT - I'd like to disclaim that this is probably not the best way to do this!
@@ -26,13 +28,8 @@ namespace GrandstreamATAConfigurator
          * I am completely open to better ways to do this
          */
 
-        public static NetworkInterface GetInterface()
+        public static NetworkInterface FindAta(string ip, out string newIp)
         {
-            var client = new TcpClient();
-
-            var bytes = Array.Empty<byte>();
-            var gateway = string.Empty;
-
             // for every interface on the computer
             foreach (var iInterface in NetworkInterface.GetAllNetworkInterfaces())
             {
@@ -46,44 +43,21 @@ namespace GrandstreamATAConfigurator
                 if (iInterface.Description.ToLower().Contains("multiplexor")) continue;
 
                 // get the list of Unicast Addresses
-                foreach (var ip in iInterface.GetIPProperties().UnicastAddresses)
+                foreach (var ua in iInterface.GetIPProperties().UnicastAddresses)
                 {
                     // if it isn't a private IP, we're not interested
-                    if (ip.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                    if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
                     // otherwise, save the IP
-                    bytes = IPAddress.Parse(ip.Address.ToString()).GetAddressBytes();
-                    break;
-                }
-
-                foreach (var iGateway in iInterface.GetIPProperties().GatewayAddresses)
-                {
-                    try
-                    {
-                        if (!client.ConnectAsync(iGateway.Address, 80).Wait(20)) continue;
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-                    
-                    gateway = iGateway.Address.ToString();
-                    break;
-                }
-
-                // did we get an IP?
-                if (bytes == Array.Empty<byte>() && string.IsNullOrWhiteSpace(gateway))
-                    continue;
-                
-                    // if we got here, we found it!
-                    Console.WriteLine();
-                    Console.WriteLine("Found interface: " + iInterface.Name);
-                    if (!Program.GetUserBool("Is this the correct interface?")) break;
-                    Console.WriteLine();
+                    Console.WriteLine("Searching on interface '" + iInterface.Name +
+                                      "', press Ctrl + C to skip to next...");
+                    if (!PortScan(ua.Address.ToString(), out newIp)) continue;
+                    Console.WriteLine("Grandstream device found! Using IP: " + newIp);
                     return iInterface;
+                }
             }
 
             Console.WriteLine();
-            Console.WriteLine("Hmm... looks like we can't find any interfaces that will work for this...");
+            Console.WriteLine("Couldn't find any ATAs. You may not be connected to the right network.");
             Console.ReadKey();
             Environment.Exit(-1);
             throw new InvalidOperationException();
@@ -99,9 +73,17 @@ namespace GrandstreamATAConfigurator
 
         public static bool PortScan(string ip, out string newIp)
         {
+            newIp = ""; // if a SIGINT is hit, the out variable still needs to be set to exit
+            
+            Console.CancelKeyPress += delegate(object _, ConsoleCancelEventArgs e) {
+                e.Cancel = true;
+                _sigintHit = true;
+            };
+
             // for each possible IPv4
             for (var i = 1; i < 255; i++)
             {
+                if (_sigintHit) return false;
                 var bytes = IPAddress.Parse(ip).GetAddressBytes();
                 bytes[3] = (byte)i;
                 IPAddress newIpBuilder = new(bytes);
@@ -114,12 +96,13 @@ namespace GrandstreamATAConfigurator
                         // if we can't connect to the IP in question, move on
                         try
                         {
-                            if (!scan.ConnectAsync(newIpBuilder, s).Wait(20)) continue;
+                            if (!scan.ConnectAsync(newIpBuilder, s).Wait(30)) continue;
                         }
                         catch (Exception)
                         {
                             continue;
                         }
+
                         // found a device that responds to one of the ports!
                         var macAddress = GetMacByIp(newIpBuilder.ToString());
                         // uncomment the below line to output each IP found to the console
